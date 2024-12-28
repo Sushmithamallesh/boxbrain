@@ -1,6 +1,6 @@
 Todo
 [x] Setup next supabase stuff
-[ ] Git 
+[x] Git 
 [ ] Deploy to vercel
 [ ] Setup user login through gmail
 [ ] Setup how to get user permission to access their gmail mails
