@@ -21,7 +21,10 @@ export async function signInWithGoogle() {
   });
 
   if (error) {
-    console.error(error.message);
+    console.error("Auth Error:", error.message);
+    if (error.message.includes("provider is not enabled")) {
+      throw new Error("Google authentication is not configured. Please contact support.");
+    }
     throw error;
   }
 
