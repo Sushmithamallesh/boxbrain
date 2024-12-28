@@ -1,7 +1,7 @@
 Todo
 [x] Setup next supabase stuff
 [x] Git 
-[ ] Deploy to vercel
+[x] Deploy to vercel
 [ ] Setup user login through gmail
 [ ] Setup how to get user permission to access their gmail mails
 [ ] Setup workflow to fetch and organise email from inbox in the last month
