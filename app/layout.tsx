@@ -13,8 +13,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Box Brain",
-  description: "Keep tabs on your orders",
+  title: "boxbrain",
+  description: "keep tabs on your orders",
   icons: {
     icon: { url: "/favicon.svg", type: "image/svg+xml" },
     shortcut: { url: "/favicon.svg", type: "image/svg+xml" },
@@ -45,7 +45,7 @@ export default function RootLayout({
               <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
                 <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
                   <div className="flex gap-5 items-center font-semibold">
-                    <Link href={"/"}> 📦 Box Brain</Link>
+                    <Link href={"/"}> 📦 boxbrain</Link>
                   </div>
                   {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
                 </div>

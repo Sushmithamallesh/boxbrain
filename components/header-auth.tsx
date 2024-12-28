@@ -29,7 +29,7 @@ export default async function AuthButton() {
           disabled
           className="opacity-75 cursor-none pointer-events-none"
         >
-          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/dashboard">dashboard</Link>
         </Button>
       </div>
     );
@@ -48,7 +48,7 @@ export default async function AuthButton() {
   ) : (
     <div className="flex gap-2">
       <Button asChild size="sm" variant={"outline"}>
-        <Link href="/dashboard">Dashboard</Link>
+        <Link href="/dashboard">dashboard</Link>
       </Button>
       <ThemeSwitcher />
     </div>
