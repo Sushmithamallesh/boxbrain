@@ -36,7 +36,7 @@ export const updateSession = async (request: NextRequest) => {
 
     // Only protect the /protected route
     if (request.nextUrl.pathname.startsWith("/protected") && user.error) {
-      return NextResponse.redirect(new URL("/sign-in-or-up", request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
 
     return response;

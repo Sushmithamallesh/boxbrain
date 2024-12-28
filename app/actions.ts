@@ -14,7 +14,6 @@ export async function signInWithGoogle() {
       redirectTo: `${origin}/auth/callback`,
       queryParams: {
         access_type: "offline",
-        prompt: "consent",
         scope: [
           "https://www.googleapis.com/auth/userinfo.email",
           "https://www.googleapis.com/auth/userinfo.profile",
@@ -38,5 +37,5 @@ export async function signInWithGoogle() {
 export const signOutAction = async () => {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  return redirect("/sign-in-or-up");
+  return redirect("/");
 };
