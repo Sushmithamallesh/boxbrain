@@ -6,6 +6,9 @@ import { Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import "./globals.css";
+import { signOutAction } from "@/app/actions";
+import { Button } from "@/components/ui/button";
+import { createClient } from "@/utils/supabase/server";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -26,11 +29,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <html lang="en" className={geistMono.className} suppressHydrationWarning>
       <body className="bg-background text-foreground">
@@ -55,11 +61,20 @@ export default function RootLayout({
               </div>
 
               <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
-                <div className="flex gap-2">
-                  Website:<Link href="https://sushispot.xyz" target="_blank">[w]</Link> 
-                  Twitter:<Link href="https://x.com/_sushh_" target="_blank">[x]</Link>
+                <div className="flex items-center gap-8">
+                  <div className="flex gap-2">
+                    Website:<Link href="https://sushispot.xyz" target="_blank">[w]</Link> 
+                    Twitter:<Link href="https://x.com/_sushh_" target="_blank">[x]</Link>
+                  </div>
+                  <ThemeSwitcher />
+                  {user && (
+                    <form action={signOutAction}>
+                      <Button type="submit" size="sm" variant="ghost" className="text-xs">
+                        logout
+                      </Button>
+                    </form>
+                  )}
                 </div>
-                <ThemeSwitcher />
               </footer>
             </div>
           </main>

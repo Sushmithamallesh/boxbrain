@@ -8,3 +8,4 @@ Todo
 [ ] Setup intelligence to go through all the email subject and select order related emails
 [ ] Store all the relevant emails in supabase(should I beusing RAG here or something else?
 [ ] Make landing page better add screenshots and what not
+[ ] Remove the your boxes button from the sign in page. It's confusing

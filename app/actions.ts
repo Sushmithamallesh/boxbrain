@@ -15,7 +15,11 @@ export async function signInWithGoogle() {
       queryParams: {
         access_type: "offline",
         prompt: "consent",
-        scope: "https://www.googleapis.com/auth/gmail.readonly",
+        scope: [
+          "https://www.googleapis.com/auth/userinfo.email",
+          "https://www.googleapis.com/auth/userinfo.profile",
+          "openid"
+        ].join(" ")
       },
     },
   });
@@ -34,5 +38,5 @@ export async function signInWithGoogle() {
 export const signOutAction = async () => {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  return redirect("/dashboard");
+  return redirect("/sign-in-or-up");
 };
