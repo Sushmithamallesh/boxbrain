@@ -48,7 +48,7 @@ export default async function AuthButton() {
               <div className="text-xs text-muted-foreground">Gmail Connected</div>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/protected">your boxes</Link>
+              <Link href="/boxes/home">your boxes</Link>
             </DropdownMenuItem>
             <form action={signOutAction}>
               <DropdownMenuItem asChild>

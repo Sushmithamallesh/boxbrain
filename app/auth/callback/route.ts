@@ -11,5 +11,5 @@ export async function GET(request: Request) {
   }
 
   // After successful auth, redirect to protected dashboard
-  return NextResponse.redirect(new URL("/protected", requestUrl.origin));
-}
+  return NextResponse.redirect(new URL("/boxes/home", requestUrl.origin));
+} 

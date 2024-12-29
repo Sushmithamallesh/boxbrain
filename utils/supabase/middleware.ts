@@ -34,8 +34,8 @@ export const updateSession = async (request: NextRequest) => {
 
     const user = await supabase.auth.getUser();
 
-    // Only protect the /protected route
-    if (request.nextUrl.pathname.startsWith("/protected") && user.error) {
+    // Protect all routes under /boxes
+    if (request.nextUrl.pathname.startsWith("/boxes") && user.error) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 

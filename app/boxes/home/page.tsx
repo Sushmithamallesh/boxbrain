@@ -1,4 +1,4 @@
-export default async function ProtectedPage() {
+export default async function HomePage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-8 max-w-4xl mx-auto">
       <div className="flex flex-col gap-2">
@@ -13,4 +13,4 @@ export default async function ProtectedPage() {
       </div>
     </div>
   );
-}
+} 
