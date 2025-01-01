@@ -6,6 +6,7 @@ type ConnectResponse = {
   isExistingAccount: boolean;
   success: boolean;
   data: string;
+  lastSync: string;
 }
 
 export async function GET(
@@ -14,6 +15,8 @@ export async function GET(
 ): Promise<NextResponse<ConnectResponse>> {
   try {
     const entityId = (await params).entityId;
+    const userMetadata = JSON.parse(req.headers.get('x-user-metadata') || '{}');
+    const lastSync = userMetadata.last_synced || "";
     console.log("API entityId:", entityId);
     
     const toolset = ToolsetManager.getToolset();
@@ -39,21 +42,25 @@ export async function GET(
             return NextResponse.json<ConnectResponse>({ 
               isExistingAccount: false, 
               success: true, 
-              data: connectionRequest.redirectUrl ?? ""
+              data: connectionRequest.redirectUrl ?? "",
+              lastSync: lastSync
             });
         } else if (connectionRequest.connectionStatus === "ACTIVE") {
             console.log("Connection Status is active, you can now test by calling the tool.");
+            console.log("lastSync:", lastSync);
             return NextResponse.json<ConnectResponse>({ 
               isExistingAccount: false, 
               success: true, 
-              data: "" 
+              data: "",
+              lastSync: lastSync
             });
         } else {
             console.log("Connection process failed, please try again.");
             return NextResponse.json<ConnectResponse>({ 
               isExistingAccount: false, 
               success: false, 
-              data: connectionRequest.redirectUrl ?? ""
+              data: connectionRequest.redirectUrl ?? "",
+              lastSync: lastSync
             });
         }
     } else {
@@ -62,6 +69,7 @@ export async function GET(
           isExistingAccount: true, 
           success: true, 
           data: "",
+          lastSync: lastSync
         });
     }
   } catch (error) {
@@ -69,7 +77,8 @@ export async function GET(
     return NextResponse.json<ConnectResponse>({
       isExistingAccount: false,
       success: false,
-      data: ""
+      data: "",
+      lastSync: ""
     }, { status: 500 });
   }
 }

@@ -20,10 +20,15 @@ export default async function HomePage() {
     : 'http://localhost:3000';
     
   const entityId = user.email.split('@')[0];
+
+  // Get the current session for auth
+  const { data: { session } } = await supabase.auth.getSession();
+  
   const response = await fetch(`${baseUrl}/api/connect/${encodeURIComponent(entityId)}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
+      'X-User-Metadata': JSON.stringify(user.user_metadata)
     },
     cache: 'no-store'
   });
@@ -43,7 +48,7 @@ export default async function HomePage() {
             <p className="font-medium">gmail connected</p>
           </div>
           <p className="text-sm text-muted-foreground pl-5">
-            we're scanning your inbox for orders...
+            we're scanning your inbox for orders... last synced {connectionStatus.lastSync}
           </p>
         </div>
       ) : connectionStatus.success ? (
