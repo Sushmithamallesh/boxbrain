@@ -19,9 +19,8 @@ export default async function HomePage() {
     ? `https://${process.env.VERCEL_URL}` 
     : 'http://localhost:3000';
     
-  const entityId = encodeURIComponent(user.email.split('@')[0]);
-  console.log("Sending entityId:", entityId);
-  const response = await fetch(`${baseUrl}/api/connect/${entityId}`, {
+  const entityId = user.email.split('@')[0];
+  const response = await fetch(`${baseUrl}/api/connect/${encodeURIComponent(entityId)}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
