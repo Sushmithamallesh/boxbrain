@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { ToolsetManager } from '@/utils/composio/toolsetmanager';
 import { isExistingConnectedAccount } from '@/utils/composio/entitymanagement';
 
 export async function GET(
-  request: Request, 
-  context: { params: { entityId: string } }
+    req: NextRequest,
+    { params }: { params: Promise<{ entityId: string }> },
 ) {
   try {
-    const { entityId } = await Promise.resolve(context.params);
+    const entityId = (await params).entityId 
     console.log("API entityId:", entityId);
     
     const toolset = ToolsetManager.getToolset();
