@@ -1,5 +1,4 @@
 import { signOutAction, signInWithGoogle } from "@/app/actions";
-import { hasEnvVars } from "@/utils/supabase/check-env-vars";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -17,16 +16,6 @@ import { ThemeSwitcher } from "./theme-switcher";
 export default async function AuthButton() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-
-  if (!hasEnvVars) {
-    return (
-      <div className="flex gap-4 items-center">
-        <Badge variant={"default"} className="font-normal pointer-events-none">
-          Please update .env.local file with anon key and url
-        </Badge>
-      </div>
-    );
-  }
 
   if (user) {
     const initials = user.email?.split('@')[0].slice(0, 2).toUpperCase() || '??';
