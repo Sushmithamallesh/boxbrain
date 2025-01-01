@@ -1,3 +1,4 @@
+import { logger } from "../logger";
 import { ToolsetManager } from "./toolsetmanager";
 
 export async function isExistingConnectedAccount(entityId: string) {
@@ -9,14 +10,17 @@ export async function isExistingConnectedAccount(entityId: string) {
         try {
             const connectionDetails = await entity.getConnection({app: "gmail"});
             if (connectionDetails) {
-                console.log("Connection details found");
+                logger.info('Connection details found', { 
+                  entityId,
+                  connectionDetails
+                });
                 return true;
             } else {
-                console.log("No connection details found");
+                logger.info('No connection details found', { entityId });
                 return false;
             }
         } catch {
-            console.log("Error getting connection details");
+            logger.error('Error getting connection details', { entityId });
             return false;
         }
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ToolsetManager } from '@/utils/composio/toolsetmanager';
 import { isExistingConnectedAccount } from '@/utils/composio/entitymanagement';
+import { logger } from '@/utils/logger';
 
 type ConnectResponse = {
   isExistingAccount: boolean;
@@ -15,20 +16,33 @@ export async function GET(
 ): Promise<NextResponse<ConnectResponse>> {
   try {
     const entityId = (await params).entityId;
+    logger.info('Processing connection request', { entityId });
+
     const userMetadata = JSON.parse(req.headers.get('x-user-metadata') || '{}');
     const lastSync = userMetadata.last_synced || "";
-    console.log("API entityId:", entityId);
+    logger.debug('User metadata received', { userMetadata });
     
     const toolset = ToolsetManager.getToolset();
     const isExistingAccount = await isExistingConnectedAccount(entityId);
-    console.log("isExistingAccount:", isExistingAccount);
-    const baseUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}` 
-    : 'http://localhost:3000';
+    logger.info('Account status checked', { 
+      entityId, 
+      isExistingAccount 
+    });
 
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+
+    logger.debug('Using base URL', { baseUrl });
 
     if (!isExistingAccount) {
         const redirectUrl = `${baseUrl}/boxes/home`;
+        logger.info('Initiating new connection request', { 
+          entityId, 
+          redirectUrl,
+          integrationId: "bd230eac-3320-4af4-8244-3bda43ad06cd"
+        });
+
         const connectionRequest = await toolset.client.connectedAccounts.initiate({
             entityId: entityId,
             integrationId: "bd230eac-3320-4af4-8244-3bda43ad06cd",
@@ -37,8 +51,12 @@ export async function GET(
             authConfig: {},
         });
         
+        logger.info('Connection request completed', {
+          entityId,
+          status: connectionRequest.connectionStatus
+        });
+
         if (connectionRequest.connectionStatus === "INITIATED") {
-            console.log(connectionRequest.redirectUrl);
             return NextResponse.json<ConnectResponse>({ 
               isExistingAccount: false, 
               success: true, 
@@ -46,8 +64,6 @@ export async function GET(
               lastSync: lastSync
             });
         } else if (connectionRequest.connectionStatus === "ACTIVE") {
-            console.log("Connection Status is active, you can now test by calling the tool.");
-            console.log("lastSync:", lastSync);
             return NextResponse.json<ConnectResponse>({ 
               isExistingAccount: false, 
               success: true, 
@@ -55,7 +71,6 @@ export async function GET(
               lastSync: lastSync
             });
         } else {
-            console.log("Connection process failed, please try again.");
             return NextResponse.json<ConnectResponse>({ 
               isExistingAccount: false, 
               success: false, 
@@ -64,7 +79,7 @@ export async function GET(
             });
         }
     } else {
-        console.log("Connection already exists!");
+        logger.info('Using existing connection', { entityId });
         return NextResponse.json<ConnectResponse>({ 
           isExistingAccount: true, 
           success: true, 
@@ -73,7 +88,10 @@ export async function GET(
         });
     }
   } catch (error) {
-    console.error('Server error:', error);
+    logger.error('Connection request failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json<ConnectResponse>({
       isExistingAccount: false,
       success: false,
