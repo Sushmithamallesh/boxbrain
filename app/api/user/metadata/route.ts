@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { getSupabaseClient } from '@/utils/supabase/server';
 import { logger } from '@/utils/logger';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await getSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { getSupabaseClient } from "@/utils/supabase/server";
 import { ArrowRight } from "lucide-react";
 import { logger } from '@/utils/logger';
 import FetchOrders from "@/components/fetchorders";
@@ -6,7 +6,7 @@ import { getEntityIdFromEmail } from "@/utils/composio";
 
 export default async function HomePage() {
   try {
-    const supabase = await createClient();
+    const supabase = await getSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user?.email) {

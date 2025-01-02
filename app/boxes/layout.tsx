@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { getSupabaseClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
 export default async function BoxesLayout({
@@ -6,7 +6,7 @@ export default async function BoxesLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {

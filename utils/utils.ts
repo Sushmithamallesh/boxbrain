@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "./supabase/server";
+import {  getSupabaseClient } from "./supabase/server";
 
 /**
  * Redirects to a specified path with an encoded message as a query parameter.
@@ -17,19 +17,19 @@ export function encodedRedirect(
 }
 
 export async function getUserMetadata() {
-  const supabase = await createClient();
+  const supabase = await getSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   return user?.user_metadata || {};
 }
 
 export async function getUserMail() {
-  const supabase = await createClient();
+  const supabase = await getSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   return user?.email || '';  
 }
 
 export async function updateUserLastSynced(last_synced: string) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) return {};

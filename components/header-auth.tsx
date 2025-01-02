@@ -2,7 +2,7 @@ import { signOutAction, signInWithGoogle } from "@/app/actions";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { createClient } from "@/utils/supabase/server";
+import { getSupabaseClient } from "@/utils/supabase/server";
 import { ArrowRight } from "lucide-react";
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeSwitcher } from "./theme-switcher";
 
 export default async function AuthButton() {
-  const supabase = await createClient();
+  const supabase = await getSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user) {

@@ -7,7 +7,7 @@ import Link from "next/link";
 import "./globals.css";
 import { signOutAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/utils/supabase/server";
+import { getSupabaseClient } from "@/utils/supabase/server";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -33,7 +33,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = await createClient();
+  const supabase = await getSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
