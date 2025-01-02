@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/utils/logger';
-import { getUserMail, getUserMetadata, updateUserLastSynced } from '@/utils/utils';
+import { getUserMail, getUserMetadata, updateUserLastSynced } from '@/utils/supabaseuser';
 import { getEntityIdFromEmail } from '@/utils/composio';
 import { fetchEmailFromLastMonth } from '@/utils/composio/gmail';
 
