@@ -14,7 +14,7 @@ interface Order {
 export default function FetchOrders() {
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [message, setMessage] = useState<string>("This should only take a short time...");
+  const [message, setMessage] = useState<string>("this should only take a short time...");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,7 +36,7 @@ export default function FetchOrders() {
         
         // Update message if it's first time
         if (isFirstTime) {
-          setMessage("Looks like it's your first time here. Fetching all data from the past month...");
+          setMessage("looks like it's your first time here. fetching all data from the past month...");
         }
 
         // Then sync orders
@@ -68,7 +68,7 @@ export default function FetchOrders() {
         setMessage(data.message || '');
       } catch (error) {
         console.error('Error fetching orders:', error);
-        setMessage('Failed to fetch orders. Please try again.');
+        setMessage('failed to fetch orders. please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -77,9 +77,11 @@ export default function FetchOrders() {
     fetchData();
   }, []);
 
+  const containerClasses = "min-h-[400px] border rounded-lg p-4 bg-muted/50";
+
   if (isLoading) {
     return (
-      <div className="border rounded-lg p-4 bg-muted/50">
+      <div className={containerClasses}>
         <p className="text-sm text-muted-foreground">{message}</p>
       </div>
     );
@@ -87,27 +89,29 @@ export default function FetchOrders() {
 
   if (orders.length === 0) {
     return (
-      <div className="border rounded-lg p-4 bg-muted/50">
-        <p className="text-sm text-muted-foreground">No orders found.</p>
+      <div className={containerClasses}>
+        <p className="text-sm text-muted-foreground">no orders found.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {orders.map((order) => (
-        <div key={order.id} className="border rounded-lg p-4 bg-muted/50">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-medium">Order #{order.orderNumber}</h3>
-            <span className="text-sm text-muted-foreground">{order.status}</span>
+    <div className={containerClasses}>
+      <div className="space-y-4">
+        {orders.map((order) => (
+          <div key={order.id} className="border rounded-lg p-4 bg-muted/50">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-medium">order #{order.orderNumber}</h3>
+              <span className="text-sm text-muted-foreground">{order.status}</span>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p>carrier: {order.carrier}</p>
+              <p>tracking: {order.trackingNumber}</p>
+              <p>estimated delivery: {order.estimatedDelivery}</p>
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            <p>Carrier: {order.carrier}</p>
-            <p>Tracking: {order.trackingNumber}</p>
-            <p>Estimated Delivery: {order.estimatedDelivery}</p>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

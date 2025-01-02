@@ -34,7 +34,7 @@ export default async function AuthButton() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem className="flex-col items-start">
               <div className="text-sm font-medium">{user.email}</div>
-              <div className="text-xs text-muted-foreground">Gmail Connected</div>
+              <div className="text-xs text-muted-foreground">gmail connected</div>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/boxes/home">your boxes</Link>

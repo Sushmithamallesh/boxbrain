@@ -12,7 +12,7 @@ export default async function HomePage() {
       logger.warn('No user email found');
       return (
         <div className="flex-1 w-full flex flex-col gap-8 max-w-4xl mx-auto">
-          <div className="border border-red-200 rounded-lg p-6 bg-red-50/50 dark:bg-red-950/50">
+          <div className="min-h-[400px] border border-red-200 rounded-lg p-6 bg-red-50/50 dark:bg-red-950/50">
             <p className="text-[hsl(var(--blood-red))]">unable to get user email. please try logging in again.</p>
           </div>
         </div>
@@ -75,6 +75,8 @@ export default async function HomePage() {
       statusText: response.statusText
     });
 
+    const containerClasses = "min-h-[400px] border rounded-lg p-6 bg-muted/50";
+
     return (
       <div className="flex-1 w-full flex flex-col gap-8 max-w-4xl mx-auto">
         <div className="flex flex-col gap-2">
@@ -82,7 +84,7 @@ export default async function HomePage() {
         </div>
 
         {connectionStatus.isExistingAccount ? (
-          <div className="border rounded-lg p-6 bg-muted/50">
+          <div className={containerClasses}>
             <div className="flex items-center gap-3 mb-4">
               <div className="h-2 w-2 rounded-full bg-green-500"></div>
               <p className="font-medium">gmail connected</p>
@@ -90,7 +92,7 @@ export default async function HomePage() {
             <FetchOrders />
           </div>
         ) : connectionStatus.success ? (
-          <div className="border rounded-lg p-6 bg-muted/50">
+          <div className={containerClasses}>
             <h2 className="font-medium mb-3">connect your gmail 📬</h2>
             <p className="text-sm text-muted-foreground mb-6">
               let's get started by connecting your gmail account to track your packages automatically.
@@ -104,7 +106,7 @@ export default async function HomePage() {
             </a>
           </div>
         ) : (
-          <div className="border border-red-200 rounded-lg p-6 bg-red-50/50 dark:bg-red-950/50">
+          <div className="min-h-[400px] border border-red-200 rounded-lg p-6 bg-red-50/50 dark:bg-red-950/50">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-[hsl(var(--blood-red))]"></div>
               <p className="text-[hsl(var(--blood-red))]">connection failed. please refresh the page.</p>

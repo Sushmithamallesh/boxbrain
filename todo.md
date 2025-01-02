@@ -5,7 +5,7 @@ Todo
 [x] Setup user login through gmail
 [x] Think of the composio flow.
 [x] Setup how to get user permission to access their gmail mails
-[ ] Setup last syced on user and display that. If user is first time then tell him that. Tell him you are fetching emails from last month and syncing them. display the loading spinner
+[x] Setup last syced on user and display that. If user is first time then tell him that. Tell him you are fetching emails from last month and syncing them. display the loading spinner
 [ ] Setup workflow to fetch and organise email from inbox in the last month
 [ ] Setup intelligence to go through all the email subject and select order related emails
 [ ] Store all the relevant emails in supabase

@@ -21,3 +21,21 @@ export async function getUserMetadata() {
   const { data: { user } } = await supabase.auth.getUser();
   return user?.user_metadata || {};
 }
+
+export async function updateUserLastSynced(last_synced: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) return {};
+
+  const { data, error } = await supabase.auth.updateUser({
+    data: { last_synced }
+  });
+
+  if (error) {
+    console.error('Failed to update last_synced:', error);
+    return user.user_metadata || {};
+  }
+
+  return data.user.user_metadata || {};
+}
