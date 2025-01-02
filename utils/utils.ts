@@ -22,6 +22,12 @@ export async function getUserMetadata() {
   return user?.user_metadata || {};
 }
 
+export async function getUserMail() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.email || '';  
+}
+
 export async function updateUserLastSynced(last_synced: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -39,3 +45,4 @@ export async function updateUserLastSynced(last_synced: string) {
 
   return data.user.user_metadata || {};
 }
+

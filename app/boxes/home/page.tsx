@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { ArrowRight } from "lucide-react";
 import { logger } from '@/utils/logger';
 import FetchOrders from "@/components/fetchorders";
+import { getEntityIdFromEmail } from "@/utils/composio";
 
 export default async function HomePage() {
   try {
@@ -23,10 +24,7 @@ export default async function HomePage() {
       email: user.email 
     });
 
-    const entityId = user.email.split('@')[0];
-    logger.debug('Making connection request', { 
-      entityId 
-    });
+    const entityId = getEntityIdFromEmail(user.email);
 
     const baseUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}` 

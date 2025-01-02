@@ -11,9 +11,10 @@ Todo
 [ ] Store all the relevant emails in supabase
 [ ] Sync every time a user goes to page /orders  
 [ ] Setup a cron endpoint to fetch all users every 15 minutes and sync
-
+[ ] Deal with paging on the first and any other attempt to fetch emails
 [ ] Make landing page better add screenshots and what not
 [ ] Remove the your boxes button from the sign in page. It's confusing
+
 
 * Batch pull all emails from last month make the orders table with LLM calls
 * Store order details and last sync detail for each user. 

@@ -1,21 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/utils/logger';
-import { getUserMetadata } from '@/utils/utils';
+import { getUserMail, getUserMetadata, updateUserLastSynced } from '@/utils/utils';
+import { getEntityIdFromEmail } from '@/utils/composio';
+import { fetchEmailFromLastMonth } from '@/utils/composio/gmail';
 
 export async function GET(req: NextRequest) {
   try {
     const { last_synced } = await getUserMetadata();
+    const userMail = await getUserMail();
+    const entityId = getEntityIdFromEmail(userMail);
+
     if (!last_synced) {
-        // fetch all data from the past month
+        try {
+            logger.info('First time sync, fetching emails from last month');
+            const emails = await fetchEmailFromLastMonth(entityId);
+            logger.info('Emails fetched successfully', { count: emails.length });
+            
+            // TODO: Process emails and extract order information
+            // TODO: Store orders in database
+            
+            // Update last sync time
+            //await updateUserLastSynced(new Date().toISOString());
+        } catch (error) {
+            logger.error('Failed to fetch emails:', {
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            throw error;
+        }
     } else {
-        // fetch data from last synced time
-        // if last synced time is more than 5 minutes ago, sync again
+        // Check if we need to sync again
+        const timeSinceLastSync = new Date().getTime() - new Date(last_synced).getTime();
+        const fiveMinutes = 5 * 60 * 1000;
+        
+        if (timeSinceLastSync > fiveMinutes) {
+            logger.info('Last sync was more than 5 minutes ago, syncing again');
+            // TODO: Implement incremental sync logic
+            await updateUserLastSynced(new Date().toISOString());
+        }
     }
-
-    // fetch data from orders table and return it
-
-    // update last synced time in user metadata
-    
 
     // For now, return dummy data
     // TODO: Implement actual order fetching from database
@@ -40,7 +62,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      orders
+      orders,
+      message: last_synced 
+        ? `last synced: ${new Date(last_synced).toLocaleString()}`
+        : 'initial sync in progress...'
     });
 
   } catch (error) {
