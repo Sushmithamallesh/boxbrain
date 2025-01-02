@@ -6,8 +6,7 @@ import { logger } from '@/utils/logger';
 type ConnectResponse = {
   isExistingAccount: boolean;
   success: boolean;
-  data: string;
-  lastSync: string;
+  data: string; 
 }
 
 export async function GET(
@@ -61,21 +60,18 @@ export async function GET(
               isExistingAccount: false, 
               success: true, 
               data: connectionRequest.redirectUrl ?? "",
-              lastSync: lastSync
             });
         } else if (connectionRequest.connectionStatus === "ACTIVE") {
             return NextResponse.json<ConnectResponse>({ 
               isExistingAccount: false, 
               success: true, 
               data: "",
-              lastSync: lastSync
             });
         } else {
             return NextResponse.json<ConnectResponse>({ 
               isExistingAccount: false, 
               success: false, 
               data: connectionRequest.redirectUrl ?? "",
-              lastSync: lastSync
             });
         }
     } else {
@@ -84,7 +80,6 @@ export async function GET(
           isExistingAccount: true, 
           success: true, 
           data: "",
-          lastSync: lastSync
         });
     }
   } catch (error) {
@@ -96,7 +91,6 @@ export async function GET(
       isExistingAccount: false,
       success: false,
       data: "",
-      lastSync: ""
     }, { status: 500 });
   }
 }

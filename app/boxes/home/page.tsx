@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { ArrowRight } from "lucide-react";
 import { logger } from '@/utils/logger';
+import FetchOrders from "@/components/fetchorders";
 
 export default async function HomePage() {
   try {
@@ -48,7 +49,7 @@ export default async function HomePage() {
       },
       cache: 'no-store'
     });
-    
+
     logger.info('Making API request to connect endpoint', {
       url: `${baseUrl}/api/connect/${encodeURIComponent(entityId)}`,
       entityId
@@ -82,13 +83,11 @@ export default async function HomePage() {
 
         {connectionStatus.isExistingAccount ? (
           <div className="border rounded-lg p-6 bg-muted/50">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-4">
               <div className="h-2 w-2 rounded-full bg-green-500"></div>
               <p className="font-medium">gmail connected</p>
             </div>
-            <p className="text-sm text-muted-foreground pl-5">
-              we're scanning your inbox for orders... last synced {connectionStatus.lastSync}
-            </p>
+            <FetchOrders />
           </div>
         ) : connectionStatus.success ? (
           <div className="border rounded-lg p-6 bg-muted/50">

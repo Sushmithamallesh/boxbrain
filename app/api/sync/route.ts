@@ -5,15 +5,17 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     logger.info('Sync endpoint called');
     
+    // Dummy sync endpoint - just return success
     return NextResponse.json({
       success: true,
-      message: "Sync endpoint reached"
+      message: "Sync completed successfully"
     });
 
   } catch (error) {
+    const err = error as Error;
     logger.error('Sync failed', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      message: err.message,
+      stack: err.stack
     });
 
     return NextResponse.json({
