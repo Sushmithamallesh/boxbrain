@@ -1,23 +1,5 @@
-import { logger } from "../logger";
 import { ToolsetManager } from "./toolsetmanager";
-
-interface EmailMessage {
-  threadId: string;
-  messageId: string;
-  messageTimestamp: string;
-  labelIds: string[];
-  preview: {
-    subject: string;
-    body: string;
-  };
-  messageText: string;
-}
-
-interface EmailResponse {
-  messages: EmailMessage[];
-  nextPageToken?: string;
-  resultSizeEstimate: number;
-}
+import { EmailMessage, EmailResponse } from "./types";
 
 export async function fetchEmailFromLastMonth(entityId: string): Promise<EmailMessage[]> {
   const toolset = ToolsetManager.getToolset();

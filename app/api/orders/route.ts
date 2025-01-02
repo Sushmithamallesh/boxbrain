@@ -3,79 +3,82 @@ import { logger } from '@/utils/logger';
 import { getUserMail, getUserMetadata, updateUserLastSynced } from '@/utils/supabaseuser';
 import { getEntityIdFromEmail } from '@/utils/composio';
 import { fetchEmailFromLastMonth } from '@/utils/composio/gmail';
+import { filterOrderRelatedEmails } from '@/utils/emailai';
+
+const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+async function processEmails(entityId: string) {
+  const emails = await fetchEmailFromLastMonth(entityId);
+  logger.info('Emails fetched', { count: emails.length });
+
+  const { relevantEmails } = await filterOrderRelatedEmails(emails);
+  logger.info('Found order-related emails', { count: relevantEmails.length });
+
+  return relevantEmails;
+}
+
+async function shouldSync(lastSynced: string | null): Promise<boolean> {
+  if (!lastSynced) return true;
+  
+  const timeSinceLastSync = new Date().getTime() - new Date(lastSynced).getTime();
+  return timeSinceLastSync > SYNC_INTERVAL;
+}
 
 export async function GET(req: NextRequest) {
+  const requestId = crypto.randomUUID();
+  logger.setRequestId(requestId);
+
   try {
     const { last_synced } = await getUserMetadata();
+    const needsSync = await shouldSync(last_synced);
+
+    if (!needsSync) {
+      logger.info('Sync not needed', { 
+        lastSynced: last_synced, 
+        nextSyncIn: SYNC_INTERVAL - (new Date().getTime() - new Date(last_synced).getTime()) 
+      });
+      return NextResponse.json({
+        success: true,
+        message: `Last synced: ${new Date(last_synced).toISOString()}`,
+        needsSync: false
+      });
+    }
+
     const userMail = await getUserMail();
     const entityId = getEntityIdFromEmail(userMail);
 
-    if (!last_synced) {
-        try {
-            logger.info('First time sync, fetching emails from last month');
-            const emails = await fetchEmailFromLastMonth(entityId);
-            logger.info('Emails fetched successfully', { count: emails.length });
-            
-            // TODO: Process emails and extract order information
-            // TODO: Store orders in database
-            
-            // Update last sync time
-            //await updateUserLastSynced(new Date().toISOString());
-        } catch (error) {
-            logger.error('Failed to fetch emails:', {
-                error: error instanceof Error ? error.message : 'Unknown error'
-            });
-            throw error;
-        }
-    } else {
-        // Check if we need to sync again
-        const timeSinceLastSync = new Date().getTime() - new Date(last_synced).getTime();
-        const fiveMinutes = 5 * 60 * 1000;
-        
-        if (timeSinceLastSync > fiveMinutes) {
-            logger.info('Last sync was more than 5 minutes ago, syncing again');
-            // TODO: Implement incremental sync logic
-            await updateUserLastSynced(new Date().toISOString());
-        }
-    }
+    logger.info('Starting email sync', { 
+      userMail,
+      entityId,
+      isInitialSync: !last_synced 
+    });
 
-    // For now, return dummy data
-    // TODO: Implement actual order fetching from database
-    const orders = [
-      {
-        id: '1',
-        orderNumber: 'ORD-001',
-        status: 'In Transit',
-        carrier: 'UPS',
-        trackingNumber: '1Z999AA1234567890',
-        estimatedDelivery: '2024-02-20'
-      },
-      {
-        id: '2',
-        orderNumber: 'ORD-002',
-        status: 'Delivered',
-        carrier: 'FedEx',
-        trackingNumber: '794583957364',
-        estimatedDelivery: '2024-02-18'
-      }
-    ];
+    const relevantEmails = await processEmails(entityId);
+   // await updateUserLastSynced(new Date().toISOString());
 
     return NextResponse.json({
       success: true,
-      orders,
-      message: last_synced 
-        ? `last synced: ${new Date(last_synced).toLocaleString()}`
-        : 'initial sync in progress...'
+      message: "Sync completed successfully",
+      data: {
+        relevantEmails,
+        syncTime: new Date().toISOString()
+      }
     });
 
   } catch (error) {
-    const err = error as Error;
-    logger.error('Failed to fetch orders:', { 
-      message: err.message,
-      stack: err.stack 
+    logger.error('Error in order sync:', { 
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack
+      } : 'Unknown error'
     });
+
     return NextResponse.json(
-      { error: 'Internal server error' }, 
+      { 
+        success: false,
+        error: 'Failed to process orders',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

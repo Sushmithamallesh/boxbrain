@@ -2,56 +2,30 @@
 
 import { useEffect, useState } from 'react';
 
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  carrier: string;
-  trackingNumber: string;
-  estimatedDelivery: string;
+interface RelevantEmail {
+  subject: string;
+  messageId: string;
+}
+
+interface OrdersResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    relevantEmails: RelevantEmail[];
+    syncTime: string;
+  };
+  needsSync?: boolean;
 }
 
 export default function FetchOrders() {
   const [isLoading, setIsLoading] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [message, setMessage] = useState<string>("this should only take a short time...");
+  const [emails, setEmails] = useState<RelevantEmail[]>([]);
+  const [message, setMessage] = useState<string>("Checking for new emails...");
+  const [lastSync, setLastSync] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // First check user metadata for last sync
-        const metadataResponse = await fetch('/api/user/metadata', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!metadataResponse.ok) {
-          throw new Error('Failed to fetch user metadata');
-        }
-
-        const { last_synced } = await metadataResponse.json();
-        const isFirstTime = !last_synced;
-        
-        // Update message if it's first time
-        if (isFirstTime) {
-          setMessage("looks like it's your first time here. fetching all data from the past month...");
-        }
-
-        // Then sync orders
-        const syncResponse = await fetch('/api/sync', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!syncResponse.ok) {
-          throw new Error('Failed to sync orders');
-        }
-
-        // Finally fetch the orders
         const response = await fetch('/api/orders', {
           method: 'GET',
           headers: {
@@ -60,15 +34,25 @@ export default function FetchOrders() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch orders');
+          throw new Error('Failed to fetch emails');
         }
 
-        const data = await response.json();
-        setOrders(data.orders || []);
-        setMessage(data.message || '');
+        const data: OrdersResponse = await response.json();
+        
+        if (data.success) {
+          if (data.needsSync === false) {
+            setMessage(data.message);
+          } else if (data.data) {
+            setEmails(data.data.relevantEmails);
+            setLastSync(data.data.syncTime);
+            setMessage(`Last synced: ${new Date(data.data.syncTime).toLocaleString()}`);
+          }
+        } else {
+          throw new Error(data.message || 'Failed to process emails');
+        }
       } catch (error) {
-        console.error('Error fetching orders:', error);
-        setMessage('failed to fetch orders. please try again.');
+        console.error('Error fetching emails:', error);
+        setMessage('Failed to fetch emails. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -87,10 +71,15 @@ export default function FetchOrders() {
     );
   }
 
-  if (orders.length === 0) {
+  if (emails.length === 0) {
     return (
       <div className={containerClasses}>
-        <p className="text-sm text-muted-foreground">no orders found.</p>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">No order-related emails found.</p>
+          {lastSync && (
+            <p className="text-xs text-muted-foreground">{message}</p>
+          )}
+        </div>
       </div>
     );
   }
@@ -98,19 +87,18 @@ export default function FetchOrders() {
   return (
     <div className={containerClasses}>
       <div className="space-y-4">
-        {orders.map((order) => (
-          <div key={order.id} className="border rounded-lg p-4 bg-muted/50">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">order #{order.orderNumber}</h3>
-              <span className="text-sm text-muted-foreground">{order.status}</span>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">{message}</p>
+          <p className="text-sm text-muted-foreground">Found: {emails.length}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          {emails.map((email) => (
+            <div key={email.messageId} className="flex items-center justify-between py-2 px-3 bg-background rounded border">
+              <span className="text-sm truncate flex-1">{email.subject}</span>
+              <span className="text-xs text-muted-foreground ml-2 font-mono">{email.messageId.slice(0, 8)}...</span>
             </div>
-            <div className="text-sm text-muted-foreground">
-              <p>carrier: {order.carrier}</p>
-              <p>tracking: {order.trackingNumber}</p>
-              <p>estimated delivery: {order.estimatedDelivery}</p>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
