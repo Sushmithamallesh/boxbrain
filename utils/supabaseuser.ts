@@ -16,6 +16,8 @@ export async function getUserMetadata() {
   export async function getUserLastSynced() {
     const supabase = await getSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
+    //to do remove this.
+    await updateUserLastSynced('');
     return user?.user_metadata?.last_synced || '';
   } 
   

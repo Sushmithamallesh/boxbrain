@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/utils/logger';
-import { getUserMail, getUserMetadata, updateUserLastSynced } from '@/utils/supabaseuser';
+import { getUserLastSynced, getUserMail, getUserMetadata, updateUserLastSynced } from '@/utils/supabaseuser';
 import { getEntityIdFromEmail } from '@/utils/composio';
 import { fetchEmailFromLastMonth } from '@/utils/composio/gmail';
 import { filterOrderRelatedEmails } from '@/utils/emailai';
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   logger.setRequestId(requestId);
 
   try {
-    const { last_synced } = await getUserMetadata();
+    const { last_synced } = await getUserLastSynced();
     const needsSync = await shouldSync(last_synced);
 
     logger.info('Processing order request', {

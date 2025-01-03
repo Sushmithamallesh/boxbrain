@@ -21,7 +21,11 @@ export async function fetchEmailFromLastMonth(entityId: string): Promise<EmailMe
       "has shipped" OR
       "order status" OR
       "order confirmed" OR
-      "order received"
+      "order received" OR
+      "payment failed" OR
+      "payment declined" OR
+      "payment unsuccessful" OR
+      "transaction failed"
     )
   `.replace(/\s+/g, ' ').trim();
 

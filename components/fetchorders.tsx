@@ -49,7 +49,8 @@ enum OrderStatus {
   PACKED = 'packed',
   SHIPPED = 'shipped',
   OUT_FOR_DELIVERY = 'out_for_delivery',
-  DELIVERED = 'delivered'
+  DELIVERED = 'delivered',
+  PAYMENT_FAILED = 'payment_failed'
 }
 
 enum ReturnStatus {
@@ -89,9 +90,15 @@ const getStatusColor = (status: OrderStatus): string => {
     case OrderStatus.ORDERED:
     case OrderStatus.CONFIRMED:
       return 'text-yellow-600';
+    case OrderStatus.PAYMENT_FAILED:
+      return 'text-red-600';
     default:
       return 'text-gray-600';
   }
+};
+
+const formatStatusText = (status: OrderStatus): string => {
+  return status.toString().toLowerCase().replace(/_/g, ' ');
 };
 
 // Components
@@ -105,7 +112,7 @@ const OrderCard = ({ order }: { order: OrderDetails }) => (
       <div className="flex flex-col items-end">
         <span className="font-medium">{formatCurrency(order.totalAmount, order.currency)}</span>
         <span className={`text-sm ${getStatusColor(order.latestStatus)}`}>
-          {order.latestStatus.replace(/_/g, ' ')}
+          {formatStatusText(order.latestStatus)}
         </span>
       </div>
     </div>
