@@ -3,6 +3,7 @@ import { ToolsetManager } from '@/utils/composio/toolsetmanager';
 import { isExistingConnectedAccount } from '@/utils/composio/entitymanagement';
 import { logger } from '@/utils/logger';
 
+const COMPOSIO_INTEGRATION_ID = "bd230eac-3320-4af4-8244-3bda43ad06cd";
 type ConnectResponse = {
   isExistingAccount: boolean;
   success: boolean;
@@ -18,7 +19,6 @@ export async function GET(
     logger.info('Processing connection request', { entityId });
 
     const userMetadata = JSON.parse(req.headers.get('x-user-metadata') || '{}');
-    const lastSync = userMetadata.last_synced || "";
     logger.debug('User metadata received', { userMetadata });
     
     const toolset = ToolsetManager.getToolset();
@@ -39,12 +39,12 @@ export async function GET(
         logger.info('Initiating new connection request', { 
           entityId, 
           redirectUrl,
-          integrationId: "bd230eac-3320-4af4-8244-3bda43ad06cd"
+          integrationId:COMPOSIO_INTEGRATION_ID
         });
 
         const connectionRequest = await toolset.client.connectedAccounts.initiate({
             entityId: entityId,
-            integrationId: "bd230eac-3320-4af4-8244-3bda43ad06cd",
+            integrationId: COMPOSIO_INTEGRATION_ID,
             redirectUri: redirectUrl,
             authMode: "OAUTH2",
             authConfig: {},

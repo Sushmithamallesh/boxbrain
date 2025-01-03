@@ -6,10 +6,10 @@ Todo
 [x] Think of the composio flow.
 [x] Setup how to get user permission to access their gmail mails
 [x] Setup last syced on user and display that. If user is first time then tell him that. Tell him you are fetching emails from last month and syncing them. display the loading spinner
-[ ] Setup workflow to fetch and organise email from inbox in the last month
-[ ] Setup intelligence to go through all the email subject and select order related emails
+[x] Setup workflow to fetch and organise email from inbox in the last month
+[x] Setup intelligence to go through all the email subject and select order related emails
 [ ] Store all the relevant emails in supabase
-[ ] Sync every time a user goes to page /orders  
+[ ] Sync every time a user goes to page /orders ( call sync finally)  
 [ ] Setup a cron endpoint to fetch all users every 15 minutes and sync
 [ ] Deal with paging on the first and any other attempt to fetch emails
 [ ] Make landing page better add screenshots and what not

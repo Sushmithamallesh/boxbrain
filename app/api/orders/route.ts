@@ -32,6 +32,11 @@ export async function GET(req: NextRequest) {
     const { last_synced } = await getUserMetadata();
     const needsSync = await shouldSync(last_synced);
 
+    logger.info('Processing order request', {
+      lastSynced: last_synced,
+      needsSync
+    });
+
     if (!needsSync) {
       logger.info('Sync not needed', { 
         lastSynced: last_synced, 
@@ -40,30 +45,71 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         success: true,
         message: `Last synced: ${new Date(last_synced).toISOString()}`,
-        needsSync: false
+        needsSync: false,
+        data: {
+          relevantEmails: [],
+          orderDetails: []
+        }
       });
     }
 
     const userMail = await getUserMail();
-    const entityId = getEntityIdFromEmail(userMail);
+    if (!userMail) {
+      logger.error('No user email found');
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'User not authenticated',
+          message: 'Please log in to view orders'
+        },
+        { status: 401 }
+      );
+    }
 
+    const entityId = getEntityIdFromEmail(userMail);
     logger.info('Starting email sync', { 
       userMail,
       entityId,
       isInitialSync: !last_synced 
     });
 
-    const relevantEmails = await processEmails(entityId);
-   // await updateUserLastSynced(new Date().toISOString());
+    try {
+      const emails = await fetchEmailFromLastMonth(entityId);
+      logger.info('Emails fetched', { count: emails.length });
 
-    return NextResponse.json({
-      success: true,
-      message: "Sync completed successfully",
-      data: {
-        relevantEmails,
-        syncTime: new Date().toISOString()
-      }
-    });
+      const { relevantEmails, orderDetails } = await filterOrderRelatedEmails(emails);
+      logger.info('Order processing complete', {
+        relevantEmailsCount: relevantEmails.length,
+        orderDetailsCount: orderDetails.length
+      });
+
+      await updateUserLastSynced(new Date().toISOString());
+
+      return NextResponse.json({
+        success: true,
+        message: "Sync completed successfully",
+        data: {
+          relevantEmails,
+          orderDetails
+        }
+      });
+    } catch (syncError) {
+      logger.error('Error during email sync:', { 
+        error: syncError instanceof Error ? {
+          message: syncError.message,
+          stack: syncError.stack
+        } : 'Unknown error'
+      });
+      
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Sync failed',
+          message: 'Failed to sync emails. Please try again.'
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
     logger.error('Error in order sync:', { 

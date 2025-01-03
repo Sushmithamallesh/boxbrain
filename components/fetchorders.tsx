@@ -2,63 +2,196 @@
 
 import { useEffect, useState } from 'react';
 
-interface RelevantEmail {
-  subject: string;
-  messageId: string;
-}
-
+// Types
 interface OrdersResponse {
   success: boolean;
   message: string;
   data?: {
-    relevantEmails: RelevantEmail[];
-    syncTime: string;
+    relevantEmails: Array<{
+      subject: string;
+      messageId: string;
+      messageTimestamp: string;
+    }>;
+    orderDetails: OrderDetails[];
   };
   needsSync?: boolean;
 }
 
+interface OrderDetails {
+  orderId: string;
+  vendor: string;
+  totalAmount: number;
+  currency: string;
+  orderDate: Date;
+  latestStatus: OrderStatus;
+  trackingUrl?: string;
+  emailReceivedTime: string;
+  senderEmail: string;
+  statusHistory: OrderStatusHistory[];
+  return?: ReturnInfo;
+}
+
+interface OrderStatusHistory {
+  status: OrderStatus;
+  timestamp: Date;
+  emailId: string;
+}
+
+interface ReturnInfo {
+  initiatedDate?: Date;
+  trackingUrl?: string;
+  status: ReturnStatus;
+}
+
+enum OrderStatus {
+  ORDERED = 'ordered',
+  CONFIRMED = 'confirmed',
+  PACKED = 'packed',
+  SHIPPED = 'shipped',
+  OUT_FOR_DELIVERY = 'out_for_delivery',
+  DELIVERED = 'delivered'
+}
+
+enum ReturnStatus {
+  INITIATED = 'initiated',
+  PICKUP_SCHEDULED = 'pickup_scheduled',
+  PICKED_UP = 'picked_up',
+  RECEIVED = 'received',
+  REFUNDED = 'refunded'
+}
+
+// Utility functions
+const formatDate = (date: Date | string) => {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).format(new Date(date));
+};
+
+const formatCurrency = (amount: number, currency: string) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    currencyDisplay: 'narrowSymbol'
+  }).format(amount);
+};
+
+const getStatusColor = (status: OrderStatus): string => {
+  switch (status) {
+    case OrderStatus.DELIVERED:
+      return 'text-green-600';
+    case OrderStatus.SHIPPED:
+    case OrderStatus.OUT_FOR_DELIVERY:
+      return 'text-blue-600';
+    case OrderStatus.ORDERED:
+    case OrderStatus.CONFIRMED:
+      return 'text-yellow-600';
+    default:
+      return 'text-gray-600';
+  }
+};
+
+// Components
+const OrderCard = ({ order }: { order: OrderDetails }) => (
+  <div className="flex flex-col gap-2 p-4 bg-background rounded-lg border hover:border-gray-400 transition-colors">
+    <div className="flex items-center justify-between">
+      <div className="flex flex-col">
+        <h3 className="font-medium">{order.vendor}</h3>
+        <p className="text-sm text-muted-foreground">Order #{order.orderId}</p>
+      </div>
+      <div className="flex flex-col items-end">
+        <span className="font-medium">{formatCurrency(order.totalAmount, order.currency)}</span>
+        <span className={`text-sm ${getStatusColor(order.latestStatus)}`}>
+          {order.latestStatus.replace(/_/g, ' ')}
+        </span>
+      </div>
+    </div>
+    
+    <div className="text-sm space-y-1">
+      <p>Ordered: {formatDate(order.orderDate)}</p>
+      {order.trackingUrl && (
+        <p>
+          <a 
+            href={order.trackingUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-blue-600 hover:underline"
+          >
+            Track Order
+          </a>
+        </p>
+      )}
+      {order.return && (
+        <div className="mt-2 p-2 bg-red-50 rounded">
+          <p className="text-red-600">Return {order.return.status}</p>
+          {order.return.trackingUrl && (
+            <a 
+              href={order.return.trackingUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-red-600 hover:underline text-sm"
+            >
+              Track Return
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 export default function FetchOrders() {
   const [isLoading, setIsLoading] = useState(true);
-  const [emails, setEmails] = useState<RelevantEmail[]>([]);
-  const [message, setMessage] = useState<string>("Checking for new emails...");
+  const [orders, setOrders] = useState<OrderDetails[]>([]);
+  const [message, setMessage] = useState<string>("Checking for new orders...");
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const fetchOrders = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/orders', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch orders: ${response.statusText}`);
+      }
+
+      const data: OrdersResponse = await response.json();
+      
+      if (data.success) {
+        if (data.needsSync === false) {
+          setMessage(data.message);
+        } else if (data.data?.orderDetails) {
+          setOrders(data.data.orderDetails);
+          setLastSync(data.data.relevantEmails[0]?.messageTimestamp);
+          setMessage(`Last synced: ${formatDate(new Date())}`);
+        }
+      } else {
+        throw new Error(data.message || 'Failed to process orders');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch orders';
+      setError(errorMessage);
+      setMessage('Failed to fetch orders. Please try again.');
+      console.error('Error fetching orders:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/orders', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch emails');
-        }
-
-        const data: OrdersResponse = await response.json();
-        
-        if (data.success) {
-          if (data.needsSync === false) {
-            setMessage(data.message);
-          } else if (data.data) {
-            setEmails(data.data.relevantEmails);
-            setLastSync(data.data.syncTime);
-            setMessage(`Last synced: ${new Date(data.data.syncTime).toLocaleString()}`);
-          }
-        } else {
-          throw new Error(data.message || 'Failed to process emails');
-        }
-      } catch (error) {
-        console.error('Error fetching emails:', error);
-        setMessage('Failed to fetch emails. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchOrders();
   }, []);
 
   const containerClasses = "min-h-[400px] border rounded-lg p-4 bg-muted/50";
@@ -66,16 +199,37 @@ export default function FetchOrders() {
   if (isLoading) {
     return (
       <div className={containerClasses}>
-        <p className="text-sm text-muted-foreground">{message}</p>
+        <div className="flex items-center justify-center h-full">
+          <p className="text-sm text-muted-foreground animate-pulse">{message}</p>
+        </div>
       </div>
     );
   }
 
-  if (emails.length === 0) {
+  if (error) {
     return (
       <div className={containerClasses}>
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">No order-related emails found.</p>
+        <div className="flex flex-col items-center justify-center h-full space-y-4">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            onClick={() => {
+              setRetryCount(prev => prev + 1);
+              fetchOrders();
+            }}
+            className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className={containerClasses}>
+        <div className="flex flex-col items-center justify-center h-full space-y-2">
+          <p className="text-sm text-muted-foreground">No orders found.</p>
           {lastSync && (
             <p className="text-xs text-muted-foreground">{message}</p>
           )}
@@ -89,14 +243,20 @@ export default function FetchOrders() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{message}</p>
-          <p className="text-sm text-muted-foreground">Found: {emails.length}</p>
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-muted-foreground">Found: {orders.length}</p>
+            <button
+              onClick={fetchOrders}
+              className="p-2 text-sm text-blue-600 hover:text-blue-800 transition-colors"
+              title="Refresh orders"
+            >
+              ↻
+            </button>
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-2">
-          {emails.map((email) => (
-            <div key={email.messageId} className="flex items-center justify-between py-2 px-3 bg-background rounded border">
-              <span className="text-sm truncate flex-1">{email.subject}</span>
-              <span className="text-xs text-muted-foreground ml-2 font-mono">{email.messageId.slice(0, 8)}...</span>
-            </div>
+        <div className="grid grid-cols-1 gap-3">
+          {orders.map((order) => (
+            <OrderCard key={order.orderId} order={order} />
           ))}
         </div>
       </div>
