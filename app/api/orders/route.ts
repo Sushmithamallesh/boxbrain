@@ -11,9 +11,10 @@ import type { OrdersResponse } from '@/types/orders';
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 async function shouldSync(lastSynced: string | null): Promise<boolean> {
-  if (!lastSynced) return true;
-  const timeSinceLastSync = new Date().getTime() - new Date(lastSynced).getTime();
-  return timeSinceLastSync > SYNC_INTERVAL;
+    return true;
+//   if (!lastSynced) return true;
+//   const timeSinceLastSync = new Date().getTime() - new Date(lastSynced).getTime();
+//   return timeSinceLastSync > SYNC_INTERVAL;
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse>> {

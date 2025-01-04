@@ -118,7 +118,7 @@ export default function FetchOrders() {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const response = await fetch('/api/orders');
       if (!response.ok) throw new Error(`Failed to fetch orders: ${response.statusText}`);
 

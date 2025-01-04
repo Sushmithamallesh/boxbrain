@@ -31,68 +31,113 @@ export async function extractOrderDetails(email: EmailMessage): Promise<OrderDet
         messages: [
           {
             role: "system",
-            content: `You are an expert at analyzing e-commerce emails to extract detailed order information.
+            content: `You are an expert at analyzing e-commerce emails to extract detailed order information. Be precise and conservative in your extraction.
 
 Extract order details in JSON format with the following structure:
 
-Required Fields:
-- orderId (string): Unique order/confirmation number from vendor
-  * Must be an actual order ID (e.g., "ORD-123", "AMZ-456")
-  * Do NOT use payment/transaction IDs (e.g., "TXN123", "PAY789")
-  * Return empty string if no valid order ID found
-- vendor (string): Company name/store that processed the order
-- totalAmount (number): Total purchase amount (excluding shipping if separately listed)
-- orderDate (string): ISO date when order was placed
-- latestStatus (string): Current order status, one of:
-  * 'ordered': Initial order confirmation
-  * 'processing': Order being prepared
-  * 'shipped': Order in transit
-  * 'delivered': Order received by customer
-  * 'cancelled': Order cancelled
-  * 'returned': Return processed
+REQUIRED FIELDS - Must be clearly present in email:
+- orderId (string): Unique order/confirmation number
+  ✓ VALID: "ORD-123", "AMZ-456-789", "#1234567"
+  × INVALID: Transaction IDs, payment refs, tracking numbers
+  * Return empty string if no clear order ID found
+- vendor (string): Company name that processed the order
+  ✓ Use official company name, not email domain
+  ✓ Normalize common variations (e.g., "Amazon.com" -> "Amazon")
+- totalAmount (number): Purchase amount
+  ✓ Include only order total
+  ✓ Exclude shipping unless bundled
+  ✓ Remove currency symbols
+  ✓ Convert to number (e.g., "₹1,499.00" -> 1499.00)
+- orderDate (string): When order was placed
+  ✓ Use email timestamp if order date not specified
+  ✓ Must be ISO format
+- latestStatus (string): Current status
+  ✓ Must be one of:
+    * 'ordered': Initial confirmation
+    * 'processing': Being prepared
+    * 'shipped': In transit
+    * 'delivered': Received
+    * 'cancelled': Cancelled
+    * 'returned': Return processed
+- currency (string): Currency code - REQUIRED, not optional
+  ✓ Must be standard 3-letter code:
+    * "INR" for Indian Rupees (₹)
+    * "USD" for US Dollars ($)
+    * "EUR" for Euros (€)
+    * "GBP" for British Pounds (£)
+  ✓ Look for:
+    * Currency symbols (₹, $, €, £)
+    * Currency codes in email
+    * Store's location/domain (e.g., .in -> "INR")
+  ✓ Default rules:
+    * .in domain -> "INR"
+    * .com domain with ₹ -> "INR"
+    * $ without other context -> "USD"
 
-Optional Fields:
-- currency (string): Currency code (USD, EUR, etc.). Default: "USD"
-- trackingUrl (string): Full URL for order tracking
-- metadata (object): Additional order details like:
-  * itemCount: Number of items
-  * shippingCost: Shipping fee
-  * taxAmount: Tax charged
-  * estimatedDelivery: Expected delivery date
-  * paymentMethod: Payment method used
-  * shippingAddress: Delivery address
-  * items: Array of purchased items
+OPTIONAL FIELDS - Include only if clearly present:
+- trackingUrl (string): Full, valid tracking URL
+  ✓ Must be complete URL, not just tracking number
+  ✓ Verify URL format is valid
+- metadata (object): Additional verified info
+  ✓ itemCount: Total items ordered
+  ✓ shippingCost: Separate shipping fee
+  ✓ taxAmount: Tax charged
+  ✓ estimatedDelivery: Expected delivery date
+  ✓ paymentMethod: Payment type used
+  ✓ shippingAddress: Delivery location
+  ✓ items: Array of purchased items
 
-Status History:
-- statusHistory (array): Status changes with:
-  * status: One of the valid status values
-  * timestamp: ISO date string
-  * emailId: Unique identifier for the email
+STATUS HISTORY - Track all mentioned statuses:
+- statusHistory (array):
+  ✓ status: Valid status from above list
+  ✓ timestamp: ISO date when status occurred
+  ✓ emailId: Current email's ID
 
-Return Information (if applicable):
+RETURN INFO - Only if explicitly mentioned:
 - return (object):
-  * initiatedDate: ISO date when return started
-  * trackingUrl: Return shipment tracking URL
-  * status: One of:
-    - 'initiated': Return requested
-    - 'return_label_created': Label generated
-    - 'in_transit': Return shipment in progress
-    - 'received': Return received by vendor
-    - 'refunded': Refund processed
+  ✓ initiatedDate: When return started (ISO date)
+  ✓ trackingUrl: Valid return tracking URL
+  ✓ status: Must be one of:
+    * 'initiated': Return requested
+    * 'return_label_created': Label ready
+    * 'in_transit': Return shipping
+    * 'received': Vendor received
+    * 'refunded': Refund processed
 
-Guidelines:
-1. Parse dates in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)
-2. Convert all amounts to numbers (remove currency symbols)
-3. Extract tracking URLs only if they are complete and valid
-4. Include metadata for any additional useful information
-5. Return null if:
-   - Email is not order-related
-   - No valid order ID found
-   - Cannot extract meaningful information
-6. For order status:
-   - Use most specific status available
-   - Consider email context and timing
-   - Track status changes in statusHistory`
+VALIDATION RULES:
+1. Return null if:
+   × No valid order ID found
+   × Email is not clearly order-related
+   × Cannot extract required fields
+   × Uncertain about data accuracy
+2. Dates must be ISO format
+3. Numbers must be cleaned of currency symbols
+4. URLs must be complete and valid
+5. Status must match predefined values
+6. Currency must be valid 3-letter code
+7. Don't guess or infer missing data
+
+ERROR PREVENTION:
+- Verify order ID format before including
+- Validate all dates are parseable
+- Check URL formats are complete
+- Ensure amounts are valid numbers
+- Verify status values match allowed list
+- Ensure currency code is standard 3-letter format
+- Don't include uncertain or ambiguous data
+
+EXAMPLE EXTRACTIONS:
+1. Indian Store:
+   "Total: ₹1,499.00"
+   -> totalAmount: 1499.00, currency: "INR"
+
+2. US Store:
+   "Total: $19.99"
+   -> totalAmount: 19.99, currency: "USD"
+
+3. Mixed Format:
+   "Amount: Rs. 2,999.00"
+   -> totalAmount: 2999.00, currency: "INR"`
           },
           {
             role: "user",
@@ -117,10 +162,24 @@ Guidelines:
       if (!parsedResponse || parsedResponse.orderId === "") {
         logger.info('Email not relevant for order details', {
           subject: email.preview.subject,
-          messageId: email.messageId
+          messageId: email.messageId,
+          sender: email.sender,
+          reason: !parsedResponse ? 'No data extracted' : 'No valid order ID'
         });
         return null;
       }
+
+      // Log extracted fields
+      logger.info('Extracted order fields', {
+        messageId: email.messageId,
+        subject: email.preview.subject,
+        orderId: parsedResponse.orderId,
+        vendor: parsedResponse.vendor,
+        status: parsedResponse.latestStatus,
+        hasTracking: !!parsedResponse.trackingUrl,
+        hasReturn: !!parsedResponse.return,
+        metadata: parsedResponse.metadata || {}
+      });
 
       // Add the email metadata
       const orderDetails: OrderDetails = {
@@ -140,11 +199,16 @@ Guidelines:
         } : undefined
       };
 
-      logger.info('Successfully extracted order details', {
+      logger.info('Successfully processed order', {
         messageId: email.messageId,
         orderId: orderDetails.orderId,
         vendor: orderDetails.vendor,
-        currency: orderDetails.currency
+        amount: `${orderDetails.currency} ${orderDetails.totalAmount}`,
+        status: orderDetails.latestStatus,
+        orderDate: (orderDetails.orderDate instanceof Date ? orderDetails.orderDate : new Date(orderDetails.orderDate)).toISOString(),
+        hasTracking: !!orderDetails.trackingUrl,
+        hasReturn: !!orderDetails.return,
+        metadataFields: Object.keys(orderDetails.metadata || {})
       });
 
       return orderDetails;
@@ -183,42 +247,58 @@ export async function filterOrderRelatedEmails(emails: EmailMessage[]): Promise<
         messages: [
           {
             role: "system",
-            content: `You are an expert at identifying e-commerce and order-related emails.
+            content: `You are an expert at identifying e-commerce and order-related emails. Your task is to identify ALL emails related to an order's lifecycle.
 
-Analyze each email to determine if it's related to:
-1. Order confirmations/receipts
-2. Shipping notifications
-3. Delivery updates
-4. Order status changes
-5. Return/refund processes
-6. Order cancellations
-7. Payment confirmations for orders
+THESE ARE DEFINITELY ORDER EMAILS (mark as true):
+1. Order Status Emails:
+   ✓ Order confirmations ("Your order is confirmed", "Order received")
+   ✓ Order cancellations ("Your order was cancelled", "Order cancelled")
+   ✓ Shipping updates ("Order has been shipped", "Delivery update")
+   ✓ Delivery confirmations
+   ✓ Return confirmations
+   ✓ Refund notifications
 
-Key Indicators:
-- Sender domains from known e-commerce platforms
-- Order/tracking number patterns
-- E-commerce related keywords
-- Shipping/delivery terminology
-- Transaction confirmation language
+2. Payment Status Emails:
+   ✓ Payment success ("Order is successful", "Payment confirmed")
+   ✓ Payment failure ("Order unsuccessful", "Payment failed")
+   ✓ Payment retry requests ("Please try again", "Payment pending")
+   ✓ Payment confirmation from processors (PayU, Razorpay, etc.)
 
-Exclude:
-- Marketing/promotional emails
-- Newsletters
-- Account notifications
-- Password resets
-- General updates
-- Wishlist notifications
-- Shopping cart reminders
+3. Common Legitimate Senders:
+   ✓ Store domains (uniqlo.com, amazon.com)
+   ✓ Payment processors (payu.in, razorpay.com)
+   ✓ Order notification emails (orders@, noreply@)
+   ✓ Store name with order domains
+
+REAL EXAMPLES TO MARK AS TRUE:
+✓ "Your Order at https://www.uniqlo.com/in/ is successful" from payment-report@payu.in
+✓ "Your Order at https://www.uniqlo.com/in/ is unsuccessful, Please try again" from payment-report@payu.in
+✓ "＜UNIQLO India＞ Your order was received" from order@mail.in.uniqlo.com
+✓ "＜UNIQLO India＞ Your order was cancelled" from order@mail.in.uniqlo.com
+✓ "＜UNIQLO India＞ Your order has been shipped" from order@mail.in.uniqlo.com
+✓ "Your Keychron order is now complete" from noreply@keychron.in
+
+THESE ARE NOT ORDER EMAILS (mark as false):
+× Marketing emails ("Check out our sale")
+× Cart abandonment ("Items in your cart")
+× Wishlist updates
+× Account-related emails (password reset)
+× General newsletters
+× Email system notifications (delivery failure)
+× General shipping policy updates
 
 Respond with a JSON object where:
 - Keys are 'email_X' (X = index number)
-- Values are boolean (true = order-related, false = not order-related)
+- Values are boolean (true for ANY email related to order lifecycle)
 
-Example:
+Example responses:
 {
-  "email_0": true,   // Order confirmation
-  "email_1": false,  // Marketing newsletter
-  "email_2": true    // Shipping update
+  "email_0": true,    // "Payment successful for order"
+  "email_1": true,    // "Payment failed, please retry"
+  "email_2": true,    // "Order cancelled"
+  "email_3": true,    // "Order shipped"
+  "email_4": false,   // "Email delivery failed"
+  "email_5": false    // "Check out our sale"
 }`
           },
           {
@@ -245,6 +325,18 @@ Example:
 
       const results = emails.map((_, index) => jsonResponse[`email_${index}`] === true);
 
+      // Log filtering results
+      emails.forEach((email, index) => {
+        const isRelevant = results[index];
+        logger.info(`Email ${isRelevant ? 'RELEVANT' : 'FILTERED OUT'}`, {
+          subject: email.preview.subject,
+          sender: email.sender,
+          messageId: email.messageId,
+          timestamp: email.messageTimestamp,
+          reason: isRelevant ? 'Matched order criteria' : 'Not order-related'
+        });
+      });
+
       // Get relevant emails first
       const relevantEmailsData = emails.filter((_, index) => results[index]);
       relevantEmails.push(...relevantEmailsData.map(email => ({
@@ -252,6 +344,14 @@ Example:
         messageId: email.messageId,
         messageTimestamp: email.messageTimestamp
       })));
+
+      // Log summary
+      logger.info('Email filtering summary', {
+        total: emails.length,
+        relevant: relevantEmails.length,
+        filtered: emails.length - relevantEmails.length,
+        relevantSubjects: relevantEmails.map(e => e.subject)
+      });
 
       // Process order details in parallel batches
       const BATCH_SIZE = 3; // Process 3 emails at a time to avoid rate limits
