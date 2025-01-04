@@ -3,6 +3,12 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export const updateSession = async (request: NextRequest) => {
   try {
+    // Skip middleware for auth callback route
+    if (request.nextUrl.pathname === '/auth/callback') {
+      return NextResponse.next();
+    }
+
+    // Create a response early to modify cookies
     let response = NextResponse.next({
       request: {
         headers: request.headers,
@@ -14,33 +20,45 @@ export const updateSession = async (request: NextRequest) => {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() {
-            return request.cookies.getAll();
+          get(name: string) {
+            return request.cookies.get(name)?.value;
           },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value),
-            );
-            response = NextResponse.next({
-              request,
+          set(name: string, value: string, options: any) {
+            request.cookies.set({
+              name,
+              value,
+              ...options,
             });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options),
-            );
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+            });
+          },
+          remove(name: string, options: any) {
+            request.cookies.delete(name);
+            response.cookies.delete(name);
           },
         },
-      },
+      }
     );
 
-    const user = await supabase.auth.getUser();
+    const { data: { session }, error } = await supabase.auth.getSession();
 
     // Protect all routes under /boxes
-    if (request.nextUrl.pathname.startsWith("/boxes") && user.error) {
-      return NextResponse.redirect(new URL("/", request.url));
+    if (request.nextUrl.pathname.startsWith("/boxes")) {
+      if (!session) {
+        return NextResponse.redirect(new URL("/", request.url));
+      }
     }
 
     return response;
   } catch (e) {
+    // On error in protected routes, redirect to home
+    if (request.nextUrl.pathname.startsWith("/boxes")) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    
     return NextResponse.next({
       request: {
         headers: request.headers,
