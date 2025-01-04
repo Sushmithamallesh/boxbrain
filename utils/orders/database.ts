@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from '../supabase/server';
-import { OrderDetails } from '@/types/orders';
+import { OrderDetails, OrderStatus } from '@/types/orders';
 import { logger } from '../logger';
 
 function parseDate(dateStr: string | Date | null | undefined): Date | null {
@@ -10,6 +10,35 @@ function parseDate(dateStr: string | Date | null | undefined): Date | null {
   } catch (error) {
     return null;
   }
+}
+
+function isMoreRecentStatus(newStatus: OrderStatus, oldStatus: OrderStatus): boolean {
+  const statusPriority: Record<OrderStatus, number> = {
+    'ordered': 1,
+    'processing': 2,
+    'shipped': 3,
+    'delivered': 4,
+    'cancelled': 5,
+    'returned': 6
+  };
+  return statusPriority[newStatus] > statusPriority[oldStatus];
+}
+
+function shouldUpdateOrder(newOrder: OrderDetails, existingOrder: any): boolean {
+  const newEmailTime = parseDate(newOrder.emailReceivedTime);
+  const existingEmailTime = parseDate(existingOrder.email_received_time);
+  
+  if (!newEmailTime || !existingEmailTime) return false;
+  
+  // Always update if email is more recent
+  if (newEmailTime > existingEmailTime) return true;
+  
+  // If same email time, update if status is more recent
+  if (newEmailTime.getTime() === existingEmailTime.getTime()) {
+    return isMoreRecentStatus(newOrder.latestStatus, existingOrder.latest_status);
+  }
+  
+  return false;
 }
 
 export async function storeOrderDetails(orderDetails: OrderDetails[], userId: string) {
@@ -47,19 +76,16 @@ export async function storeOrderDetails(orderDetails: OrderDetails[], userId: st
         }
 
         if (existingOrder) {
-          const existingEmailTime = parseDate(existingOrder.email_received_time);
-          if (!existingEmailTime) continue;
-
-          // Only update if new email is more recent
-          if (parsedEmailTime > existingEmailTime) {
+          // Check if we should update the order
+          if (shouldUpdateOrder(order, existingOrder)) {
             // Move current status to history
             await supabase
               .from('order_status_history')
               .insert({
                 order_id: existingOrder.id,
                 status: existingOrder.latest_status,
-                timestamp: existingEmailTime,
-                email_id: `existing_${existingEmailTime.getTime()}`
+                timestamp: existingOrder.email_received_time,
+                email_id: `existing_${new Date(existingOrder.email_received_time).getTime()}`
               });
 
             // Update order
@@ -73,7 +99,8 @@ export async function storeOrderDetails(orderDetails: OrderDetails[], userId: st
                 latest_status: order.latestStatus,
                 tracking_url: order.trackingUrl,
                 email_received_time: order.emailReceivedTime,
-                sender_email: order.senderEmail
+                sender_email: order.senderEmail,
+                metadata: order.metadata
               })
               .eq('id', existingOrder.id);
 
@@ -103,7 +130,7 @@ export async function storeOrderDetails(orderDetails: OrderDetails[], userId: st
                 });
             }
           } else {
-            // If email is older, just add to history
+            // If not updating order, just add new status history
             if (order.statusHistory?.length) {
               await supabase
                 .from('order_status_history')
@@ -131,7 +158,8 @@ export async function storeOrderDetails(orderDetails: OrderDetails[], userId: st
               latest_status: order.latestStatus,
               tracking_url: order.trackingUrl,
               email_received_time: order.emailReceivedTime,
-              sender_email: order.senderEmail
+              sender_email: order.senderEmail,
+              metadata: order.metadata
             })
             .select()
             .single();
@@ -166,17 +194,17 @@ export async function storeOrderDetails(orderDetails: OrderDetails[], userId: st
                 tracking_url: order.return.trackingUrl,
                 status: order.return.status
               });
+            }
           }
+        } catch (error) {
+          logger.error('Error processing order:', { error, orderId: order.orderId });
+          errors.push({ orderId: order.orderId, error });
         }
-      } catch (error) {
-        logger.error('Error processing order:', { error, orderId: order.orderId });
-        errors.push({ orderId: order.orderId, error });
       }
-    }
 
-    return { success: errors.length === 0, errors: errors.length ? errors : undefined };
-  } catch (error) {
-    logger.error('Error in storeOrderDetails:', { error });
-    return { success: false, error };
-  }
+      return { success: errors.length === 0, errors: errors.length ? errors : undefined };
+    } catch (error) {
+      logger.error('Error in storeOrderDetails:', { error });
+      return { success: false, error };
+    }
 } 

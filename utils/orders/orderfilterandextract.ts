@@ -1,60 +1,17 @@
 import { EmailMessage } from "../composio/types";
 import { openai } from "../openaiclient";
 import { logger } from "../logger";
+import type { OrderDetails, OrderStatus, ReturnStatus } from "@/types/orders";
 
-interface RelevantEmail {
+export interface RelevantEmail {
   subject: string;
   messageId: string;
   messageTimestamp: string;
 }
 
-interface FilterEmailsResult {
+export interface FilterEmailsResult {
   relevantEmails: RelevantEmail[];
   orderDetails: OrderDetails[];
-}
-
-enum OrderStatus {
-  ORDERED = 'ordered',
-  CONFIRMED = 'confirmed',
-  PACKED = 'packed',
-  SHIPPED = 'shipped',
-  OUT_FOR_DELIVERY = 'out_for_delivery',
-  DELIVERED = 'delivered',
-  PAYMENT_FAILED = 'payment_failed'
-}
-
-enum ReturnStatus {
-  INITIATED = 'initiated',
-  PICKUP_SCHEDULED = 'pickup_scheduled',
-  PICKED_UP = 'picked_up',
-  RECEIVED = 'received',
-  REFUNDED = 'refunded'
-}
-
-interface OrderStatusHistory {
-  status: OrderStatus;
-  timestamp: Date;
-  emailId: string;
-}
-
-interface ReturnInfo {
-  initiatedDate?: Date;
-  trackingUrl?: string;
-  status: ReturnStatus;
-}
-
-interface OrderDetails {
-  orderId: string;
-  vendor: string;
-  totalAmount: number;
-  currency: string;
-  orderDate: Date;
-  latestStatus: OrderStatus;
-  trackingUrl?: string;
-  emailReceivedTime: string;
-  senderEmail: string;
-  statusHistory: OrderStatusHistory[];
-  return?: ReturnInfo;
 }
 
 const MAX_RETRIES = 3;
@@ -74,25 +31,68 @@ export async function extractOrderDetails(email: EmailMessage): Promise<OrderDet
         messages: [
           {
             role: "system",
-            content: `You are an expert at analyzing emails to extract order information. 
-            Extract the following details in JSON format:
-            - orderId: The unique order/confirmation number assigned by the vendor (REQUIRED). This is different from transaction/payment IDs.
-              * Do NOT use payment/transaction IDs (e.g. "TXN123", "PAY789", etc.)
-              * If no clear order ID is found (only transaction ID exists), return "" STRING.
-            - vendor: Company name
-            - totalAmount: Purchase amount (number)
-            - currency: Currency code (e.g., USD, EUR, GBP)
-            - orderDate: When order was placed (ISO date string)
-            - latestStatus: Current order status (one of: ordered, confirmed, packed, shipped, out_for_delivery, delivered, payment_failed)
-            - trackingUrl: Tracking link if available
-            - statusHistory: Array of status changes with timestamps and emailId
-            - return: Return information if applicable (initiatedDate, trackingUrl, status)
-            
-            If you can't find certain information, omit those fields.
-            For currency, default to "USD" if not explicitly mentioned.
-            If the email is not order-related, you can't extract meaningful information, or there is no order ID, return null.
-            For payment_failed status, still require a valid order ID to process the order.
-            Ensure all dates are in ISO format and amounts are numbers.`
+            content: `You are an expert at analyzing e-commerce emails to extract detailed order information.
+
+Extract order details in JSON format with the following structure:
+
+Required Fields:
+- orderId (string): Unique order/confirmation number from vendor
+  * Must be an actual order ID (e.g., "ORD-123", "AMZ-456")
+  * Do NOT use payment/transaction IDs (e.g., "TXN123", "PAY789")
+  * Return empty string if no valid order ID found
+- vendor (string): Company name/store that processed the order
+- totalAmount (number): Total purchase amount (excluding shipping if separately listed)
+- orderDate (string): ISO date when order was placed
+- latestStatus (string): Current order status, one of:
+  * 'ordered': Initial order confirmation
+  * 'processing': Order being prepared
+  * 'shipped': Order in transit
+  * 'delivered': Order received by customer
+  * 'cancelled': Order cancelled
+  * 'returned': Return processed
+
+Optional Fields:
+- currency (string): Currency code (USD, EUR, etc.). Default: "USD"
+- trackingUrl (string): Full URL for order tracking
+- metadata (object): Additional order details like:
+  * itemCount: Number of items
+  * shippingCost: Shipping fee
+  * taxAmount: Tax charged
+  * estimatedDelivery: Expected delivery date
+  * paymentMethod: Payment method used
+  * shippingAddress: Delivery address
+  * items: Array of purchased items
+
+Status History:
+- statusHistory (array): Status changes with:
+  * status: One of the valid status values
+  * timestamp: ISO date string
+  * emailId: Unique identifier for the email
+
+Return Information (if applicable):
+- return (object):
+  * initiatedDate: ISO date when return started
+  * trackingUrl: Return shipment tracking URL
+  * status: One of:
+    - 'initiated': Return requested
+    - 'return_label_created': Label generated
+    - 'in_transit': Return shipment in progress
+    - 'received': Return received by vendor
+    - 'refunded': Refund processed
+
+Guidelines:
+1. Parse dates in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)
+2. Convert all amounts to numbers (remove currency symbols)
+3. Extract tracking URLs only if they are complete and valid
+4. Include metadata for any additional useful information
+5. Return null if:
+   - Email is not order-related
+   - No valid order ID found
+   - Cannot extract meaningful information
+6. For order status:
+   - Use most specific status available
+   - Consider email context and timing
+   - Track status changes in statusHistory`
           },
           {
             role: "user",
@@ -183,7 +183,43 @@ export async function filterOrderRelatedEmails(emails: EmailMessage[]): Promise<
         messages: [
           {
             role: "system",
-            content: "Analyze emails to identify order-related content (purchases, shipping, returns, e-commerce). Respond with a JSON object where keys are 'email_X' (X=index) and values are boolean."
+            content: `You are an expert at identifying e-commerce and order-related emails.
+
+Analyze each email to determine if it's related to:
+1. Order confirmations/receipts
+2. Shipping notifications
+3. Delivery updates
+4. Order status changes
+5. Return/refund processes
+6. Order cancellations
+7. Payment confirmations for orders
+
+Key Indicators:
+- Sender domains from known e-commerce platforms
+- Order/tracking number patterns
+- E-commerce related keywords
+- Shipping/delivery terminology
+- Transaction confirmation language
+
+Exclude:
+- Marketing/promotional emails
+- Newsletters
+- Account notifications
+- Password resets
+- General updates
+- Wishlist notifications
+- Shopping cart reminders
+
+Respond with a JSON object where:
+- Keys are 'email_X' (X = index number)
+- Values are boolean (true = order-related, false = not order-related)
+
+Example:
+{
+  "email_0": true,   // Order confirmation
+  "email_1": false,  // Marketing newsletter
+  "email_2": true    // Shipping update
+}`
           },
           {
             role: "user",

@@ -23,16 +23,16 @@ const formatCurrency = (amount: number, currency: string) => {
 
 const getStatusColor = (status: OrderStatus): string => {
   switch (status) {
-    case OrderStatus.DELIVERED:
+    case 'delivered':
       return 'text-green-600';
-    case OrderStatus.SHIPPED:
-    case OrderStatus.OUT_FOR_DELIVERY:
+    case 'shipped':
       return 'text-blue-600';
-    case OrderStatus.ORDERED:
-    case OrderStatus.CONFIRMED:
+    case 'processing':
       return 'text-yellow-600';
-    case OrderStatus.PAYMENT_FAILED:
-    case OrderStatus.CANCELLED:
+    case 'ordered':
+      return 'text-yellow-600';
+    case 'cancelled':
+    case 'returned':
       return 'text-red-600';
     default:
       return 'text-gray-600';
@@ -40,61 +40,73 @@ const getStatusColor = (status: OrderStatus): string => {
 };
 
 const isActiveOrder = (status: OrderStatus): boolean => {
-  return status !== OrderStatus.CANCELLED && status !== OrderStatus.PAYMENT_FAILED;
+  return status !== 'cancelled' && status !== 'returned';
 };
 
-const OrderCard = ({ order }: { order: OrderDetails }) => (
-  <div className={`flex flex-col gap-2 p-4 bg-background rounded-lg border hover:border-gray-400 transition-colors ${
-    !isActiveOrder(order.latestStatus) ? 'opacity-75' : ''
-  }`}>
-    <div className="flex items-center justify-between">
-      <div className="flex flex-col">
-        <h3 className="font-medium">{order.vendor}</h3>
-        <p className="text-sm text-muted-foreground">Order #{order.orderId}</p>
+const OrderCard = ({ order }: { order: OrderDetails }) => {
+  const hasReturn = order.return && order.return.status;
+  
+  return (
+    <div className={`flex flex-col gap-2 p-4 bg-background rounded-lg border hover:border-gray-400 transition-colors ${
+      !isActiveOrder(order.latestStatus) ? 'opacity-75' : ''
+    }`}>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col">
+          <h3 className="font-medium">{order.vendor}</h3>
+          <p className="text-sm text-muted-foreground">Order #{order.orderId}</p>
+        </div>
+        <div className="flex flex-col items-end">
+          <span className="font-medium">{formatCurrency(order.totalAmount, order.currency)}</span>
+          <span className={`text-sm ${getStatusColor(order.latestStatus)} ${
+            order.latestStatus === 'cancelled' ? 'font-medium' : ''
+          }`}>
+            {order.latestStatus.toLowerCase().replace(/_/g, ' ')}
+            {order.latestStatus === 'cancelled' && ' ⚠️'}
+          </span>
+        </div>
       </div>
-      <div className="flex flex-col items-end">
-        <span className="font-medium">{formatCurrency(order.totalAmount, order.currency)}</span>
-        <span className={`text-sm ${getStatusColor(order.latestStatus)} ${
-          order.latestStatus === OrderStatus.CANCELLED ? 'font-medium' : ''
-        }`}>
-          {order.latestStatus.toLowerCase().replace(/_/g, ' ')}
-          {order.latestStatus === OrderStatus.CANCELLED && ' ⚠️'}
-        </span>
-      </div>
-    </div>
-    
-    <div className="text-sm space-y-1">
-      <p>Ordered: {formatDate(order.orderDate)}</p>
-      {order.trackingUrl && order.latestStatus !== OrderStatus.CANCELLED && (
-        <p>
-          <a 
-            href={order.trackingUrl} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-blue-600 hover:underline"
-          >
-            Track Order
-          </a>
-        </p>
-      )}
-      {order.return && (
-        <div className="mt-2 p-2 bg-red-50 rounded">
-          <p className="text-red-600">Return {order.return.status}</p>
-          {order.return.trackingUrl && (
+      
+      <div className="text-sm space-y-1">
+        <p>Ordered: {formatDate(order.orderDate)}</p>
+        {order.metadata && (
+          <div className="text-xs text-muted-foreground">
+            {order.metadata.itemCount && <p>Items: {order.metadata.itemCount}</p>}
+            {order.metadata.estimatedDelivery && (
+              <p>Estimated delivery: {formatDate(order.metadata.estimatedDelivery)}</p>
+            )}
+          </div>
+        )}
+        {order.trackingUrl && order.latestStatus !== 'cancelled' && (
+          <p>
             <a 
-              href={order.return.trackingUrl} 
+              href={order.trackingUrl} 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="text-red-600 hover:underline text-sm"
+              className="text-blue-600 hover:underline"
             >
-              Track Return
+              Track Order
             </a>
-          )}
-        </div>
-      )}
+          </p>
+        )}
+        {hasReturn && (
+          <div className="mt-2 p-2 bg-red-50 rounded">
+            <p className="text-red-600">Return {order.return?.status.replace(/_/g, ' ')}</p>
+            {order.return?.trackingUrl && (
+              <a 
+                href={order.return.trackingUrl} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-red-600 hover:underline text-sm"
+              >
+                Track Return
+              </a>
+            )}
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default function FetchOrders() {
   const [isLoading, setIsLoading] = useState(true);
