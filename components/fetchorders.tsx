@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 // Types
-interface OrdersResponse {
+export interface OrdersResponse {
   success: boolean;
   message: string;
   data?: {
@@ -17,7 +17,7 @@ interface OrdersResponse {
   needsSync?: boolean;
 }
 
-interface OrderDetails {
+export interface OrderDetails {
   orderId: string;
   vendor: string;
   totalAmount: number;
@@ -31,29 +31,30 @@ interface OrderDetails {
   return?: ReturnInfo;
 }
 
-interface OrderStatusHistory {
+export interface OrderStatusHistory {
   status: OrderStatus;
   timestamp: Date;
   emailId: string;
 }
 
-interface ReturnInfo {
+export interface ReturnInfo {
   initiatedDate?: Date;
   trackingUrl?: string;
   status: ReturnStatus;
 }
 
-enum OrderStatus {
+export enum OrderStatus {
   ORDERED = 'ordered',
   CONFIRMED = 'confirmed',
   PACKED = 'packed',
   SHIPPED = 'shipped',
   OUT_FOR_DELIVERY = 'out_for_delivery',
   DELIVERED = 'delivered',
-  PAYMENT_FAILED = 'payment_failed'
+  PAYMENT_FAILED = 'payment_failed',
+  CANCELLED = 'cancelled'
 }
 
-enum ReturnStatus {
+export enum ReturnStatus {
   INITIATED = 'initiated',
   PICKUP_SCHEDULED = 'pickup_scheduled',
   PICKED_UP = 'picked_up',
@@ -91,6 +92,7 @@ const getStatusColor = (status: OrderStatus): string => {
     case OrderStatus.CONFIRMED:
       return 'text-yellow-600';
     case OrderStatus.PAYMENT_FAILED:
+    case OrderStatus.CANCELLED:
       return 'text-red-600';
     default:
       return 'text-gray-600';
@@ -101,9 +103,16 @@ const formatStatusText = (status: OrderStatus): string => {
   return status.toString().toLowerCase().replace(/_/g, ' ');
 };
 
+// Add a helper to determine if order is active
+const isActiveOrder = (status: OrderStatus): boolean => {
+  return status !== OrderStatus.CANCELLED && status !== OrderStatus.PAYMENT_FAILED;
+};
+
 // Components
 const OrderCard = ({ order }: { order: OrderDetails }) => (
-  <div className="flex flex-col gap-2 p-4 bg-background rounded-lg border hover:border-gray-400 transition-colors">
+  <div className={`flex flex-col gap-2 p-4 bg-background rounded-lg border hover:border-gray-400 transition-colors ${
+    !isActiveOrder(order.latestStatus) ? 'opacity-75' : ''
+  }`}>
     <div className="flex items-center justify-between">
       <div className="flex flex-col">
         <h3 className="font-medium">{order.vendor}</h3>
@@ -111,15 +120,18 @@ const OrderCard = ({ order }: { order: OrderDetails }) => (
       </div>
       <div className="flex flex-col items-end">
         <span className="font-medium">{formatCurrency(order.totalAmount, order.currency)}</span>
-        <span className={`text-sm ${getStatusColor(order.latestStatus)}`}>
+        <span className={`text-sm ${getStatusColor(order.latestStatus)} ${
+          order.latestStatus === OrderStatus.CANCELLED ? 'font-medium' : ''
+        }`}>
           {formatStatusText(order.latestStatus)}
+          {order.latestStatus === OrderStatus.CANCELLED && ' ⚠️'}
         </span>
       </div>
     </div>
     
     <div className="text-sm space-y-1">
       <p>Ordered: {formatDate(order.orderDate)}</p>
-      {order.trackingUrl && (
+      {order.trackingUrl && order.latestStatus !== OrderStatus.CANCELLED && (
         <p>
           <a 
             href={order.trackingUrl} 

@@ -4,6 +4,8 @@ import { getUserLastSynced, getUserMail, getUserMetadata, updateUserLastSynced }
 import { getEntityIdFromEmail } from '@/utils/composio';
 import { fetchEmailFromLastMonth } from '@/utils/composio/gmail';
 import { filterOrderRelatedEmails } from '@/utils/emailai';
+import { storeOrderDetails } from '@/utils/database';
+import { getSupabaseClient } from '@/utils/supabase/server';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -82,6 +84,22 @@ export async function GET(req: NextRequest) {
         relevantEmailsCount: relevantEmails.length,
         orderDetailsCount: orderDetails.length
       });
+
+      // Get user ID for database storage
+      const supabase = await getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user?.id) {
+        throw new Error('User ID not found');
+      }
+
+      // Store order details in database
+      const { success: storeSuccess, error: storeError } = await storeOrderDetails(orderDetails, user.id);
+      
+      if (!storeSuccess) {
+        logger.error('Failed to store orders:', { error: storeError });
+        throw new Error('Failed to store orders in database');
+      }
 
       await updateUserLastSynced(new Date().toISOString());
 
