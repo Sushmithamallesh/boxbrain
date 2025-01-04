@@ -1,5 +1,5 @@
 import { getSupabaseClient } from './supabase/server';
-import { OrderDetails } from '@/components/fetchorders';
+import { OrderDetails } from '@/types/orders';
 import { logger } from './logger';
 
 function parseDate(dateStr: string | Date | null | undefined): Date | null {
