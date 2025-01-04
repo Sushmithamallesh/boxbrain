@@ -62,7 +62,6 @@ export enum ReturnStatus {
   REFUNDED = 'refunded'
 }
 
-// Utility functions
 const formatDate = (date: Date | string) => {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -99,16 +98,10 @@ const getStatusColor = (status: OrderStatus): string => {
   }
 };
 
-const formatStatusText = (status: OrderStatus): string => {
-  return status.toString().toLowerCase().replace(/_/g, ' ');
-};
-
-// Add a helper to determine if order is active
 const isActiveOrder = (status: OrderStatus): boolean => {
   return status !== OrderStatus.CANCELLED && status !== OrderStatus.PAYMENT_FAILED;
 };
 
-// Components
 const OrderCard = ({ order }: { order: OrderDetails }) => (
   <div className={`flex flex-col gap-2 p-4 bg-background rounded-lg border hover:border-gray-400 transition-colors ${
     !isActiveOrder(order.latestStatus) ? 'opacity-75' : ''
@@ -123,7 +116,7 @@ const OrderCard = ({ order }: { order: OrderDetails }) => (
         <span className={`text-sm ${getStatusColor(order.latestStatus)} ${
           order.latestStatus === OrderStatus.CANCELLED ? 'font-medium' : ''
         }`}>
-          {formatStatusText(order.latestStatus)}
+          {order.latestStatus.toLowerCase().replace(/_/g, ' ')}
           {order.latestStatus === OrderStatus.CANCELLED && ' ⚠️'}
         </span>
       </div>
@@ -166,25 +159,15 @@ export default function FetchOrders() {
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState<OrderDetails[]>([]);
   const [message, setMessage] = useState<string>("Checking for new orders...");
-  const [lastSync, setLastSync] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
 
   const fetchOrders = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/orders', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch orders: ${response.statusText}`);
-      }
+      const response = await fetch('/api/orders');
+      if (!response.ok) throw new Error(`Failed to fetch orders: ${response.statusText}`);
 
       const data: OrdersResponse = await response.json();
       
@@ -193,7 +176,6 @@ export default function FetchOrders() {
           setMessage(data.message);
         } else if (data.data?.orderDetails) {
           setOrders(data.data.orderDetails);
-          setLastSync(data.data.relevantEmails[0]?.messageTimestamp);
           setMessage(`Last synced: ${formatDate(new Date())}`);
         }
       } else {
@@ -213,11 +195,9 @@ export default function FetchOrders() {
     fetchOrders();
   }, []);
 
-  const containerClasses = "min-h-[400px] border rounded-lg p-4 bg-muted/50";
-
   if (isLoading) {
     return (
-      <div className={containerClasses}>
+      <div className="min-h-[400px] border rounded-lg p-4 bg-muted/50">
         <div className="flex items-center justify-center h-full">
           <p className="text-sm text-muted-foreground animate-pulse">{message}</p>
         </div>
@@ -227,14 +207,11 @@ export default function FetchOrders() {
 
   if (error) {
     return (
-      <div className={containerClasses}>
+      <div className="min-h-[400px] border rounded-lg p-4 bg-muted/50">
         <div className="flex flex-col items-center justify-center h-full space-y-4">
           <p className="text-sm text-red-600">{error}</p>
           <button
-            onClick={() => {
-              setRetryCount(prev => prev + 1);
-              fetchOrders();
-            }}
+            onClick={fetchOrders}
             className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
           >
             Retry
@@ -246,19 +223,17 @@ export default function FetchOrders() {
 
   if (orders.length === 0) {
     return (
-      <div className={containerClasses}>
+      <div className="min-h-[400px] border rounded-lg p-4 bg-muted/50">
         <div className="flex flex-col items-center justify-center h-full space-y-2">
           <p className="text-sm text-muted-foreground">No orders found.</p>
-          {lastSync && (
-            <p className="text-xs text-muted-foreground">{message}</p>
-          )}
+          <p className="text-xs text-muted-foreground">{message}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={containerClasses}>
+    <div className="min-h-[400px] border rounded-lg p-4 bg-muted/50">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{message}</p>
