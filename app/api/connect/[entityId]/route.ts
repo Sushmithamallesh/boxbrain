@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ToolsetManager } from '@/utils/composio/toolsetmanager';
+import { ToolsetManager } from '@/utils/composio/toolsetmanager-singleton';
 import { isExistingConnectedAccount } from '@/utils/composio/entitymanagement';
 import { logger } from '@/utils/logger';
 

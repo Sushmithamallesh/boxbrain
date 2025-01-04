@@ -1,4 +1,4 @@
-import { ToolsetManager } from "./toolsetmanager";
+import { ToolsetManager } from "./toolsetmanager-singleton";
 import { EmailMessage, EmailResponse } from "./types";
 
 export async function fetchEmailFromLastMonth(entityId: string): Promise<EmailMessage[]> {

@@ -1,6 +1,6 @@
-import { EmailMessage } from "./composio/types";
-import { openai } from "./openaiclient";
-import { logger } from "./logger";
+import { EmailMessage } from "../composio/types";
+import { openai } from "../openaiclient";
+import { logger } from "../logger";
 
 interface RelevantEmail {
   subject: string;

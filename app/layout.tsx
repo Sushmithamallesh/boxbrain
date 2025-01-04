@@ -5,9 +5,9 @@ import { Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import "./globals.css";
-import { signOutAction } from "@/app/actions";
+import { signOut } from "@/app/actions";
 import { Button } from "@/components/ui/button";
-import { getSupabaseClient } from "@/utils/supabase/server";
+import { createServerSupabaseClient } from "@/utils/supabase/server";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -33,7 +33,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = await getSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
@@ -67,7 +67,7 @@ export default async function RootLayout({
                   </div>
                   <ThemeSwitcher />
                   {user && (
-                    <form action={signOutAction}>
+                    <form action={signOut}>
                       <Button type="submit" size="sm" variant="ghost" className="text-xs">
                         logout
                       </Button>

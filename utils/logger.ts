@@ -1,50 +1,62 @@
-import { randomUUID } from 'crypto';
+let requestId: string | null = null;
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-
-interface LogMessage {
-  level: LogLevel;
-  message: string;
-  timestamp: string;
-  requestId?: string;
-  metadata?: Record<string, any>;
-}
-
-let requestId: string | undefined;
-
-export const logger = {
-  setRequestId: (id: string) => {
-    requestId = id;
-  },
-  
+const logger = {
   getRequestId: () => {
     if (!requestId) {
-      requestId = randomUUID();
+      requestId = Math.random().toString(36).substring(7);
     }
     return requestId;
   },
 
-  debug: (message: string, metadata?: Record<string, any>) => log('debug', message, metadata),
-  info: (message: string, metadata?: Record<string, any>) => log('info', message, metadata),
-  warn: (message: string, metadata?: Record<string, any>) => log('warn', message, metadata),
-  error: (message: string, metadata?: Record<string, any>) => log('error', message, metadata),
+  log: (message: string, data?: any) => {
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      requestId: logger.getRequestId(),
+      level: 'info',
+      message,
+      ...data
+    }));
+  },
+
+  debug: (message: string, data?: any) => {
+    console.debug(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      requestId: logger.getRequestId(),
+      level: 'debug',
+      message,
+      ...data
+    }));
+  },
+
+  info: (message: string, data?: any) => {
+    console.info(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      requestId: logger.getRequestId(),
+      level: 'info',
+      message,
+      ...data
+    }));
+  },
+
+  warn: (message: string, data?: any) => {
+    console.warn(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      requestId: logger.getRequestId(),
+      level: 'warn',
+      message,
+      ...data
+    }));
+  },
+
+  error: (message: string, data?: any) => {
+    console.error(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      requestId: logger.getRequestId(),
+      level: 'error',
+      message,
+      ...data
+    }));
+  }
 };
 
-function log(level: LogLevel, message: string, metadata?: Record<string, any>) {
-  const logMessage: LogMessage = {
-    level,
-    message,
-    timestamp: new Date().toISOString(),
-    requestId: logger.getRequestId(),
-    metadata: {
-      ...metadata,
-      environment: process.env.NODE_ENV
-    }
-  };
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log(JSON.stringify(logMessage, null, 2));
-  } else {
-    console.log(JSON.stringify(logMessage));
-  }
-} 
+export { logger }; 

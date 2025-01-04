@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "./supabase/client-singleton";
+import { getSupabaseClient } from "./client-singleton";
 
 
 export async function getUserMetadata() {

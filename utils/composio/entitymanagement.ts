@@ -1,5 +1,5 @@
 import { logger } from "../logger";
-import { ToolsetManager } from "./toolsetmanager";
+import { ToolsetManager } from "./toolsetmanager-singleton";
 
 export async function isExistingConnectedAccount(entityId: string) {
     const toolset = ToolsetManager.getToolset();
@@ -24,4 +24,12 @@ export async function isExistingConnectedAccount(entityId: string) {
             return false;
         }
     }
+}
+
+export function getEntityIdFromEmail(email: string) {
+    const entityId = email.split('@')[0];
+    logger.debug('Making connection request', {
+        entityId
+    });
+    return entityId;
 }

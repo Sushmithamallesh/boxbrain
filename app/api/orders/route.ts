@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/utils/logger';
-import { getUserLastSynced, getUserMail, updateUserLastSynced } from '@/utils/supabaseuser';
-import { getEntityIdFromEmail } from '@/utils/composio';
+import { getUserLastSynced, getUserMail, updateUserLastSynced } from '@/utils/supabase/supabaseuser';
+import { getEntityIdFromEmail } from '@/utils/composio/entitymanagement';
 import { fetchEmailFromLastMonth } from '@/utils/composio/gmail';
-import { filterOrderRelatedEmails } from '@/utils/emailai';
-import { storeOrderDetails } from '@/utils/database';
-import { getSupabaseClient } from '@/utils/supabase/server';
+import { filterOrderRelatedEmails } from '@/utils/orders/orderfilterandextract';
+import { storeOrderDetails } from '@/utils/orders/database';
+import { createServerSupabaseClient } from '@/utils/supabase/server';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -16,9 +16,6 @@ async function shouldSync(lastSynced: string | null): Promise<boolean> {
 }
 
 export async function GET(req: NextRequest) {
-  const requestId = crypto.randomUUID();
-  logger.setRequestId(requestId);
-
   try {
     // Check if sync is needed
     const { last_synced } = await getUserLastSynced();
@@ -43,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get user ID
-    const supabase = await getSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user?.id) {
       return NextResponse.json(

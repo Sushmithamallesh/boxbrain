@@ -1,8 +1,8 @@
-import { signOutAction, signInWithGoogle } from "@/app/actions";
+import { signInWithGoogle, signOut } from "@/app/actions";
 import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { getSupabaseClient } from "@/utils/supabase/server";
+import { createServerSupabaseClient } from "@/utils/supabase/server";
 import { ArrowRight } from "lucide-react";
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeSwitcher } from "./theme-switcher";
 
 export default async function AuthButton() {
-  const supabase = await getSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user) {
@@ -39,7 +39,7 @@ export default async function AuthButton() {
             <DropdownMenuItem asChild>
               <Link href="/boxes/home">your boxes</Link>
             </DropdownMenuItem>
-            <form action={signOutAction}>
+            <form action={signOut}>
               <DropdownMenuItem asChild>
                 <button className="w-full text-left cursor-pointer">
                   logout

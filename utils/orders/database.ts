@@ -1,6 +1,6 @@
-import { getSupabaseClient } from './supabase/server';
+import { createServerSupabaseClient } from '../supabase/server';
 import { OrderDetails } from '@/types/orders';
-import { logger } from './logger';
+import { logger } from '../logger';
 
 function parseDate(dateStr: string | Date | null | undefined): Date | null {
   if (!dateStr) return null;
@@ -13,7 +13,7 @@ function parseDate(dateStr: string | Date | null | undefined): Date | null {
 }
 
 export async function storeOrderDetails(orderDetails: OrderDetails[], userId: string) {
-  const supabase = await getSupabaseClient();
+  const supabase = await createServerSupabaseClient();
   const errors: Array<{ orderId: string; error: any }> = [];
 
   try {

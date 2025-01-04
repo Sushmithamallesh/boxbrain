@@ -1,23 +1,18 @@
-import { getSupabaseClient } from "@/utils/supabase/server";
+import { createServerSupabaseClient } from "@/utils/supabase/server";
 import { ArrowRight } from "lucide-react";
 import { logger } from '@/utils/logger';
 import FetchOrders from "@/components/fetchorders";
-import { getEntityIdFromEmail } from "@/utils/composio";
+import { getEntityIdFromEmail } from "@/utils/composio/entitymanagement";
+import { encodedRedirect } from "@/utils/utils";
 
 export default async function HomePage() {
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user?.email) {
       logger.warn('No user email found');
-      return (
-        <div className="flex-1 w-full flex flex-col gap-8 max-w-4xl mx-auto">
-          <div className="min-h-[400px] border border-red-200 rounded-lg p-6 bg-red-50/50 dark:bg-red-950/50">
-            <p className="text-[hsl(var(--blood-red))]">unable to get user email. please try logging in again.</p>
-          </div>
-        </div>
-      );
+      return encodedRedirect("error", "/", encodeURIComponent("Unable to get user email. Please try logging in again."), new URL(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000').origin);
     }
 
     logger.info('User authenticated', { 
@@ -27,7 +22,7 @@ export default async function HomePage() {
     const entityId = getEntityIdFromEmail(user.email);
 
     const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
+      ? `https://${encodeURIComponent(process.env.VERCEL_URL)}` 
       : 'http://localhost:3000';
       
     logger.debug('Using base URL for API requests', { baseUrl });
@@ -58,7 +53,7 @@ export default async function HomePage() {
         status: response.status,
         statusText: response.statusText
       });
-      throw new Error(`Failed to fetch connection status: ${response.statusText}`);
+      return encodedRedirect("error", "/", encodeURIComponent(`Failed to fetch connection status: ${response.statusText}`), new URL(baseUrl).origin);
     }
 
     const connectionStatus = await response.json();
@@ -96,7 +91,7 @@ export default async function HomePage() {
               let's get started by connecting your gmail account to track your packages automatically.
             </p>
             <a 
-              href={connectionStatus.data}
+              href={encodeURI(connectionStatus.data)}
               className="group inline-flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all rounded-md border hover:border-[hsl(var(--blood-red))] hover:text-[hsl(var(--blood-red))]"
             >
               connect gmail
@@ -104,7 +99,7 @@ export default async function HomePage() {
             </a>
           </div>
         ) : (
-          <div className="min-h-[400px] border border-red-200 rounded-lg p-6 bg-red-50/50 dark:bg-red-950/50">
+          <div className={containerClasses}>
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-[hsl(var(--blood-red))]"></div>
               <p className="text-[hsl(var(--blood-red))]">connection failed. please refresh the page.</p>
@@ -117,6 +112,6 @@ export default async function HomePage() {
     logger.error('Page error', {
       error: error instanceof Error ? error.message : 'Unknown error'
     });
-    throw error;
+    return encodedRedirect("error", "/", encodeURIComponent(error instanceof Error ? error.message : "An unexpected error occurred"), new URL(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000').origin);
   }
 } 

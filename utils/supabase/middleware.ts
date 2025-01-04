@@ -1,68 +1,48 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-export const updateSession = async (request: NextRequest) => {
-  try {
-    // Skip middleware for auth callback route
-    if (request.nextUrl.pathname === '/auth/callback') {
-      return NextResponse.next();
-    }
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-    // Create a response early to modify cookies
-    let response = NextResponse.next({
-      request: {
-        headers: request.headers,
+export async function updateSession(request: NextRequest) {
+  // Create response to modify
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
+  // Create Supabase client
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get(name: string) {
+        return request.cookies.get(name)?.value;
       },
-    });
+      set(name: string, value: string, options: CookieOptions) {
+        request.cookies.set({ name, value, ...options });
+        response.cookies.set({ name, value, ...options });
+      },
+      remove(name: string, options: CookieOptions) {
+        request.cookies.delete(name);
+        response.cookies.delete(name);
+      },
+    },
+  });
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: any) {
-            request.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: any) {
-            request.cookies.delete(name);
-            response.cookies.delete(name);
-          },
-        },
-      }
-    );
+  try {
+    // Refresh session if it exists
+    await supabase.auth.getSession();
 
-    const { data: { session }, error } = await supabase.auth.getSession();
-
-    // Protect all routes under /boxes
-    if (request.nextUrl.pathname.startsWith("/boxes")) {
+    // If accessing a protected route without a session, redirect to home
+    if (request.nextUrl.pathname.startsWith('/boxes')) {
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        return NextResponse.redirect(new URL("/", request.url));
+        return NextResponse.redirect(new URL('/', request.url));
       }
     }
 
     return response;
-  } catch (e) {
-    // On error in protected routes, redirect to home
-    if (request.nextUrl.pathname.startsWith("/boxes")) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    
-    return NextResponse.next({
-      request: {
-        headers: request.headers,
-      },
-    });
+  } catch (error) {
+    return response;
   }
-};
+}
