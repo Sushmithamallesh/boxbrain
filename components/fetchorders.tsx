@@ -28,7 +28,6 @@ const getStatusColor = (status: OrderStatus): string => {
     case 'shipped':
       return 'text-blue-600';
     case 'processing':
-      return 'text-yellow-600';
     case 'ordered':
       return 'text-yellow-600';
     case 'cancelled':
@@ -69,15 +68,15 @@ const OrderCard = ({ order }: { order: OrderDetails }) => {
       <div className="text-sm space-y-1">
         <p>Ordered: {formatDate(order.orderDate)}</p>
         {order.metadata && (
-          <div className="text-xs text-muted-foreground">
-            {order.metadata.itemCount && <p>Items: {order.metadata.itemCount}</p>}
+          <div key="metadata" className="text-xs text-muted-foreground">
+            {order.metadata.itemCount && <p key="itemCount">Items: {order.metadata.itemCount}</p>}
             {order.metadata.estimatedDelivery && (
-              <p>Estimated delivery: {formatDate(order.metadata.estimatedDelivery)}</p>
+              <p key="estimatedDelivery">Estimated delivery: {formatDate(order.metadata.estimatedDelivery)}</p>
             )}
           </div>
         )}
         {order.trackingUrl && order.latestStatus !== 'cancelled' && (
-          <p>
+          <p key="tracking">
             <a 
               href={order.trackingUrl} 
               target="_blank" 
@@ -89,10 +88,11 @@ const OrderCard = ({ order }: { order: OrderDetails }) => {
           </p>
         )}
         {hasReturn && (
-          <div className="mt-2 p-2 bg-red-50 rounded">
+          <div key="return" className="mt-2 p-2 bg-red-50 rounded">
             <p className="text-red-600">Return {order.return?.status.replace(/_/g, ' ')}</p>
             {order.return?.trackingUrl && (
               <a 
+                key="returnTracking"
                 href={order.return.trackingUrl} 
                 target="_blank" 
                 rel="noopener noreferrer" 
@@ -125,12 +125,10 @@ export default function FetchOrders() {
       const data: OrdersResponse = await response.json();
       
       if (data.success) {
-        if (data.needsSync === false) {
-          setMessage(data.message);
-        } else if (data.data?.orderDetails) {
+        if (data.data?.orderDetails) {
           setOrders(data.data.orderDetails);
-          setMessage(`Last synced: ${formatDate(new Date())}`);
         }
+        setMessage(data.message);
       } else {
         throw new Error(data.message || 'Failed to process orders');
       }
@@ -148,19 +146,25 @@ export default function FetchOrders() {
     fetchOrders();
   }, []);
 
+  const Container = ({ children }: { children: React.ReactNode }) => (
+    <div className="min-h-[400px] border rounded-lg p-4 bg-muted/50">
+      {children}
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="min-h-[400px] border rounded-lg p-4 bg-muted/50">
+      <Container>
         <div className="flex items-center justify-center h-full">
           <p className="text-sm text-muted-foreground animate-pulse">{message}</p>
         </div>
-      </div>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-[400px] border rounded-lg p-4 bg-muted/50">
+      <Container>
         <div className="flex flex-col items-center justify-center h-full space-y-4">
           <p className="text-sm text-red-600">{error}</p>
           <button
@@ -170,24 +174,24 @@ export default function FetchOrders() {
             Retry
           </button>
         </div>
-      </div>
+      </Container>
     );
   }
 
   if (orders.length === 0) {
     return (
-      <div className="min-h-[400px] border rounded-lg p-4 bg-muted/50">
+      <Container>
         <div className="flex flex-col items-center justify-center h-full space-y-2">
           <p className="text-sm text-muted-foreground">No orders found.</p>
           <p className="text-xs text-muted-foreground">{message}</p>
         </div>
-      </div>
+      </Container>
     );
   }
 
   return (
-    <div className="min-h-[400px] border rounded-lg p-4 bg-muted/50">
-      <div className="space-y-4">
+    <Container>
+      <div className="flex flex-col space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{message}</p>
           <div className="flex items-center gap-4">
@@ -201,13 +205,11 @@ export default function FetchOrders() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3">
-          {orders.map((order) => (
-            <OrderCard key={order.orderId} order={order} />
-          ))}
-        </div>
+        {orders.map((order) => (
+          <OrderCard key={order.orderId} order={order} />
+        ))}
       </div>
-    </div>
+    </Container>
   );
 }
 
