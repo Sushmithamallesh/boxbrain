@@ -7,28 +7,44 @@ import { filterOrderRelatedEmails, type RelevantEmail } from '@/utils/orders/ord
 import { storeOrderDetails } from '@/utils/orders/database';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import type { OrdersResponse } from '@/types/orders';
+import { fetchUserOrders } from '@/utils/orders/fetchOrderDetails';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 async function shouldSync(lastSynced: string | null): Promise<boolean> {
-    return true;
-//   if (!lastSynced) return true;
-//   const timeSinceLastSync = new Date().getTime() - new Date(lastSynced).getTime();
-//   return timeSinceLastSync > SYNC_INTERVAL;
+  if (!lastSynced) return true;
+  const timeSinceLastSync = new Date().getTime() - new Date(lastSynced).getTime();
+  return timeSinceLastSync > SYNC_INTERVAL;
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse>> {
   try {
+    const supabase = await createServerSupabaseClient();
     // Check if sync is needed
     const { last_synced } = await getUserLastSynced();
+    console.log("Last synced from metadata:", last_synced);
     const needsSync = await shouldSync(last_synced);
-
+    console.log("Do we need to sync?", needsSync);
     if (!needsSync) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user?.id) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: 'Authentication failed',
+            needsSync: false,
+            data: { relevantEmails: [], orderDetails: [] }
+          },
+          { status: 401 }
+        );
+      }
+
+      const orderDetails = await fetchUserOrders(user.id);
       return NextResponse.json({
         success: true,
         message: `Last synced: ${new Date(last_synced).toISOString()}`,
         needsSync: false,
-        data: { relevantEmails: [], orderDetails: [] }
+        data: { relevantEmails: [], orderDetails }
       });
     }
 
@@ -45,9 +61,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
         { status: 401 }
       );
     }
-
     // Get user ID
-    const supabase = await createServerSupabaseClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user?.id) {

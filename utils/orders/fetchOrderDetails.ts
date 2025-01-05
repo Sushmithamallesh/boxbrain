@@ -19,9 +19,7 @@ export async function fetchUserOrders(userId: string): Promise<OrderDetails[]> {
         tracking_url,
         email_received_time,
         sender_email,
-        metadata,
-        status_history,
-        return_info
+        metadata
       `)
       .eq('user_id', userId)
       .order('order_date', { ascending: false });
@@ -47,12 +45,7 @@ export async function fetchUserOrders(userId: string): Promise<OrderDetails[]> {
       emailReceivedTime: order.email_received_time,
       senderEmail: order.sender_email,
       metadata: order.metadata,
-      statusHistory: order.status_history || [],
-      return: order.return_info ? {
-        initiatedDate: order.return_info.initiated_date,
-        trackingUrl: order.return_info.tracking_url,
-        status: order.return_info.status
-      } : undefined
+      statusHistory: []
     }));
 
   } catch (error) {
