@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/utils/logger';
 import { getUserLastSynced, getUserMail, updateUserLastSynced } from '@/utils/supabase/supabaseuser';
 import { getEntityIdFromEmail } from '@/utils/composio/entitymanagement';
-import { fetchEmailFromLastMonth } from '@/utils/composio/gmail';
+import { fetchEmailFromLastMonth, fetchEmailFromTime } from '@/utils/composio/gmail';
 import { filterOrderRelatedEmails, type RelevantEmail } from '@/utils/orders/orderfilterandextract';
 import { storeOrderDetails } from '@/utils/orders/database';
 import { createServerSupabaseClient } from '@/utils/supabase/server';
 import type { OrdersResponse } from '@/types/orders';
 import { fetchUserOrders } from '@/utils/orders/fetchOrderDetails';
-
-const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
+import { EmailMessage } from '@/utils/composio/types';
+const SYNC_INTERVAL = 1 * 60 * 1000; // 10 minutes in milliseconds
 
 async function shouldSync(lastSynced: string | null): Promise<boolean> {
   if (!lastSynced) return true;
@@ -22,9 +22,9 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
     const supabase = await createServerSupabaseClient();
     // Check if sync is needed
     const { last_synced } = await getUserLastSynced();
-    console.log("Last synced from metadata:", last_synced);
+    logger.info('Last synced from metadata:', { last_synced });
     const needsSync = await shouldSync(last_synced);
-    console.log("Do we need to sync?", needsSync);
+    logger.info('Do we need to sync?', { needsSync });
     if (!needsSync) {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user?.id) {
@@ -79,7 +79,15 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
 
     // Fetch and process emails
     const entityId = getEntityIdFromEmail(userMail);
-    const emails = await fetchEmailFromLastMonth(entityId);
+    var emails: EmailMessage[] = [];
+    if (!last_synced) {
+        emails = await fetchEmailFromLastMonth(entityId);
+    } else {
+        logger.info('Fetching emails from time', { last_synced });
+        emails = await fetchEmailFromTime(entityId, new Date(last_synced));
+        logger.info('Emails fetched', { count: emails.length });
+    }
+
     
     if (!emails.length) {
       logger.info('No emails found for processing');
